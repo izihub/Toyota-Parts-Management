@@ -1,0 +1,10 @@
+{
+  "description": "Transform designs into responsive front-end code, enabling developers and designers to streamline their workflow and enhance project efficiency.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
