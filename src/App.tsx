@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import svgPaths from '../imports/svg-7e3q15howf'
+import LandingPage from './LandingPage'
+
 
 type View = 'demand' | 'prediction' | 'inventory' | 'purchase'
 
@@ -1208,11 +1210,19 @@ function PurchaseOrdersView({
               </div>
 
               <div className="flex flex-col gap-2 px-6 pb-6">
-                <button className="flex h-14 w-full flex-col items-center justify-center rounded-[4px] bg-[#bd0014]">
+                <button
+                  type="button"
+                  onClick={() => onAction('Purchase order finalized and sent to 4 suppliers.')}
+                  className="flex h-14 w-full flex-col items-center justify-center rounded-[4px] bg-[#bd0014]"
+                >
                   <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-white">FINALIZE AND SEND PO</span>
                   <span className="mt-0.5 text-[10px] uppercase text-white opacity-80">TO 4 SELECTED SUPPLIERS</span>
                 </button>
-                <button className="flex h-11 w-full items-center justify-center rounded-[2px] border border-[#e9bcb7]">
+                <button
+                  type="button"
+                  onClick={() => onAction('Purchase order saved as draft.')}
+                  className="flex h-11 w-full items-center justify-center rounded-[2px] border border-[#e9bcb7]"
+                >
                   <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">SAVE AS DRAFT</span>
                 </button>
               </div>
@@ -1456,6 +1466,7 @@ interface UserAccount {
 }
 
 export default function App() {
+  const [showLanding, setShowLanding] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [fullName, setFullName] = useState('')
@@ -1545,6 +1556,7 @@ export default function App() {
 
   const handleSignOut = () => {
     setIsLoggedIn(false)
+    setShowLanding(true)
     setIsRegistering(false)
     setFullName('')
     setEmail('')
@@ -1555,6 +1567,10 @@ export default function App() {
     setError('')
     setStatusMessage('System ready')
     setView('demand')
+  }
+
+  if (showLanding && !isLoggedIn) {
+    return <LandingPage onEnter={() => setShowLanding(false)} />
   }
 
   if (!isLoggedIn) {
