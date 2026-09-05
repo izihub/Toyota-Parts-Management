@@ -19,6 +19,12 @@ body {
   box-sizing: border-box;
 }
 
+button,
+[type='button'],
+[type='submit'] {
+  cursor: pointer;
+}
+
 /* Font aliases matching Figma export cssFamily names */
 @font-face {
   font-family: 'Inter:Regular';

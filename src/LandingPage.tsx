@@ -289,7 +289,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
       </section>
 
       {/* ── DARK CTA ─────────────────────────────────────────────────────── */}
-      <section className="px-8 py-24" style={{ backgroundColor: '#111111' }}>
+      <section className="px-8 py-24" style={{ backgroundColor: '#050505' }}>
         <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-white font-black text-[44px] leading-[1.08] tracking-[-1.2px] mb-4 max-w-[520px] mx-auto">
             See your own network's forecast.
@@ -337,11 +337,11 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
                 </div>
               </div>
               <div>
-                <p className="text-[#1b1c1c] font-bold text-[11px] tracking-[0.8px] uppercase mb-4">Company</p>
+                <p className="text-[#1b1c1c] font-bold text-[11px] tracking-[0.8px] uppercase mb-4"></p>
                 <div className="flex flex-col gap-3">
-                  {['How It Works', 'Trust & Security', 'Support'].map(l => (
+                  {/*{['How It Works', 'Trust & Security', 'Support'].map(l => (
                     <span key={l} className="text-[#5f5e5e] text-[13px]">{l}</span>
-                  ))}
+                  ))}*/}
                 </div>
               </div>
             </div>

@@ -119,10 +119,14 @@ function Sidebar({
   active,
   onNavigate,
   onSignOut,
+  onOpenSupport,
+  onOpenNewOrder,
 }: {
   active: View
   onNavigate: (v: View) => void
   onSignOut: () => void
+  onOpenSupport: () => void
+  onOpenNewOrder: () => void
 }) {
   return (
     <aside className="flex w-full flex-col border-b border-[#e9bcb7] bg-white lg:w-[200px] lg:border-b-0 lg:border-r">
@@ -179,14 +183,14 @@ function Sidebar({
       {/* Bottom */}
       <div className="border-t border-[#e9bcb7]">
         <div className="flex flex-col gap-1 px-3 py-3 lg:pt-[17px]">
-          <button className="flex h-10 w-full items-center justify-center gap-2 rounded-[2px] bg-[#bd0014]">
+          <button type="button" onClick={onOpenNewOrder} className="flex h-10 w-full items-center justify-center gap-2 rounded-[2px] bg-[#bd0014]">
             <span className="text-white"><IconPlus /></span>
             <span className="text-[11px] font-bold tracking-[0.55px] text-white">New Order</span>
           </button>
-          <div className="flex h-[52px] items-center gap-3 px-1">
+          <button type="button" onClick={onOpenSupport} className="flex h-[52px] w-full items-center gap-3 px-1 text-left">
             <span className="text-[#5f5e5e]"><IconSupport /></span>
             <span className="text-[13px] text-[#5f5e5e]">Support</span>
-          </div>
+          </button>
           <button
             type="button"
             onClick={onSignOut}
@@ -201,17 +205,124 @@ function Sidebar({
   )
 }
 
+function SupportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-md rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">Support</p>
+            <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Need help?</h3>
+          </div>
+          <button type="button" onClick={onClose} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
+        </div>
+
+        <div className="space-y-3 text-[13px] text-[#5f5e5e]">
+          <p>Our logistics support team is available to help with stock issues, fulfillment delays, and workflow questions.</p>
+          <div className="rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] p-3">
+            <p className="font-bold text-[#1b1c1c]">Priority support</p>
+            <p className="mt-1">Email: logistics-support@island-supply.local</p>
+            <p>Phone: +94 11 765 4321</p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button type="button" onClick={onClose} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
+            Close
+          </button>
+          <button type="button" onClick={onSubmit} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+            Request callback
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NewOrderModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (partName: string, supplier: string, quantity: string) => void }) {
+  const [partName, setPartName] = useState('Headlamp Assembly')
+  const [supplier, setSupplier] = useState('Toyota Parts Co.')
+  const [quantity, setQuantity] = useState('120')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-lg rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">New order</p>
+            <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Create purchase order</h3>
+          </div>
+          <button type="button" onClick={onClose} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Part name</label>
+            <input value={partName} onChange={event => setPartName(event.target.value)} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Supplier</label>
+            <input value={supplier} onChange={event => setSupplier(event.target.value)} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Quantity</label>
+            <input value={quantity} onChange={event => setQuantity(event.target.value)} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button type="button" onClick={onClose} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
+            Cancel
+          </button>
+          <button type="button" onClick={() => onSubmit(partName, supplier, quantity)} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+            Save order
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Top Nav ─────────────────────────────────────────────────────────────────
 
 function TopNav({
   searchPlaceholder = 'Search components...',
   value = '',
   onChange,
+  userName = 'Nuwan Perera',
+  userRole = 'Operations Manager',
+  warehouseName = 'Navala Central',
+  profilePicture,
+  onOpenProfile,
+  notifications = [],
+  unreadCount = 0,
+  showNotifications = false,
+  onToggleNotifications,
+  onMarkNotificationsRead,
 }: {
   searchPlaceholder?: string
   value?: string
   onChange?: (value: string) => void
+  userName?: string
+  userRole?: string
+  warehouseName?: string
+  profilePicture?: string
+  onOpenProfile?: () => void
+  notifications?: Array<{ id: number; title: string; detail: string; time: string; read: boolean }>
+  unreadCount?: number
+  showNotifications?: boolean
+  onToggleNotifications?: () => void
+  onMarkNotificationsRead?: () => void
 }) {
+  const initials = userName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase() ?? '')
+    .join('') || 'U'
+
   return (
     <header className="z-10 flex h-auto flex-shrink-0 flex-col gap-3 border-b border-[#e9bcb7] bg-[#fbf9f8] px-4 py-3 lg:h-12 lg:flex-row lg:items-center lg:justify-between lg:py-0">
       <h1 className="text-[18px] font-black tracking-[-0.48px] text-[#bd0014] sm:text-[20px] lg:text-[24px]">Toyota Parts Management</h1>
@@ -227,14 +338,63 @@ function TopNav({
         </div>
         <div className="flex items-center gap-2 text-[#5f5e5e]">
           <span><IconPin /></span>
-          <span className="text-[10px] font-bold tracking-[0.55px] sm:text-[11px]">Warehouse: Navala Central</span>
+          <span className="text-[10px] font-bold tracking-[0.55px] sm:text-[11px]">Warehouse: {warehouseName}</span>
         </div>
-        <div className="flex items-center gap-4 text-[#5f5e5e]">
-          <button type="button"><IconBell /></button>
-          <button type="button"><IconGear /></button>
-          <div className="flex size-8 items-center justify-center overflow-hidden rounded-[12px] bg-[#e4e2e2] text-[13px] font-bold text-[#5f5e5e]">
-            N
-          </div>
+        <div className="relative flex items-center gap-4 text-[#5f5e5e]">
+          <button type="button" onClick={onToggleNotifications} className="relative p-1">
+            <IconBell />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-[#bd0014] px-1 text-[9px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {showNotifications && (
+            <div className="absolute right-0 top-12 z-40 w-[320px] rounded-[12px] border border-[#e9bcb7] bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[12px] font-bold uppercase tracking-[0.5px] text-[#1b1c1c]">Notifications</p>
+                <button type="button" onClick={onMarkNotificationsRead} className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#bd0014]">
+                  Mark all read
+                </button>
+              </div>
+              <div className="space-y-2">
+                {notifications.length === 0 ? (
+                  <p className="rounded-[8px] bg-[#fbf9f8] px-3 py-4 text-[12px] text-[#5f5e5e]">No new notifications.</p>
+                ) : (
+                  notifications.map(note => (
+                    <div key={note.id} className={`rounded-[8px] border px-3 py-2 ${note.read ? 'border-[#f0eeee] bg-[#fbf9f8]' : 'border-[#f3d7d3] bg-[#fff7f5]'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-[12px] font-bold text-[#1b1c1c]">{note.title}</p>
+                          <p className="mt-1 text-[11px] leading-5 text-[#5f5e5e]">{note.detail}</p>
+                        </div>
+                        {!note.read && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[#bd0014]" />}
+                      </div>
+                      <p className="mt-2 text-[10px] uppercase tracking-[0.45px] text-[#5f5e5e]">{note.time}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+          <button type="button" onClick={onOpenProfile}><IconGear /></button>
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="flex items-center gap-2 rounded-full border border-[#e9bcb7] bg-white px-2 py-1 text-left transition hover:border-[#bd0014]"
+          >
+            {profilePicture ? (
+              <img src={profilePicture} alt={userName} className="flex size-8 items-center justify-center overflow-hidden rounded-[12px] object-cover" />
+            ) : (
+              <div className="flex size-8 items-center justify-center overflow-hidden rounded-[12px] bg-[#e4e2e2] text-[12px] font-bold text-[#5f5e5e]">
+                {initials}
+              </div>
+            )}
+            <div className="hidden sm:block">
+              <p className="text-[11px] font-bold text-[#1b1c1c] leading-tight">{userName}</p>
+              <p className="text-[9px] uppercase tracking-[0.5px] text-[#5f5e5e]">{userRole}</p>
+            </div>
+          </button>
         </div>
       </div>
     </header>
@@ -246,19 +406,19 @@ function TopNav({
 const demandRows = [
   {
     img: '🔦', name: 'LED Headlight Assembly (R)', pn: 'PN-81110-33C10',
-    compat: 'CAMRY 2024', demand: 842, stock: 210, stockColor: '#bd0014', health: 25, conf: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4',
+    compat: 'CAMRY 2024', vehicleModel: 'Camry', makeYear: 2024, exteriorPart: 'Headlight', monthYear: 'Oct 2024', demand: 842, stock: 210, stockColor: '#bd0014', health: 25, conf: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4',
   },
   {
     img: '💡', name: 'LED Fog lamp (R)', pn: 'PN-43512-42119',
-    compat: 'RAV4 2023+', demand: 1240, stock: 1180, stockColor: '#1b1c1c', health: 95, conf: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4',
+    compat: 'RAV4 2023+', vehicleModel: 'RAV4', makeYear: 2023, exteriorPart: 'Fog Lamp', monthYear: 'Nov 2024', demand: 1240, stock: 1180, stockColor: '#1b1c1c', health: 95, conf: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4',
   },
   {
     img: '🚗', name: 'Front Bumper Reinforcement', pn: 'PN-52131-02830',
-    compat: 'COROLLA HB', demand: 450, stock: 320, stockColor: '#1b1c1c', health: 71, conf: 'MED', confColor: '#b45309', confBg: '#fffbeb',
+    compat: 'COROLLA HB', vehicleModel: 'Corolla', makeYear: 2024, exteriorPart: 'Bumper', monthYear: 'Sep 2024', demand: 450, stock: 320, stockColor: '#1b1c1c', health: 71, conf: 'MED', confColor: '#b45309', confBg: '#fffbeb',
   },
   {
     img: '🪟', name: 'Outer Mirror Glass (Heated)', pn: 'PN-87931-48C60',
-    compat: 'HIGHLANDER', demand: 312, stock: 45, stockColor: '#bd0014', health: 14, conf: 'LOW', confColor: '#b91c1c', confBg: '#fef2f2',
+    compat: 'HIGHLANDER', vehicleModel: 'Highlander', makeYear: 2024, exteriorPart: 'Mirror Glass', monthYear: 'Dec 2024', demand: 312, stock: 45, stockColor: '#bd0014', health: 14, conf: 'LOW', confColor: '#b91c1c', confBg: '#fef2f2',
   },
 ]
 
@@ -279,38 +439,77 @@ function DemandForecastView({
   onSearchChange,
   onAction,
   onClear,
+  userName,
+  userRole,
+  warehouseName,
+  profilePicture,
+  onOpenProfile,
+  notifications,
+  unreadCount,
+  showNotifications,
+  onToggleNotifications,
+  onMarkNotificationsRead,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
   onClear: () => void
+  userName: string
+  userRole: string
+  warehouseName: string
+  profilePicture?: string
+  onOpenProfile: () => void
+  notifications: Array<{ id: number; title: string; detail: string; time: string; read: boolean }>
+  unreadCount: number
+  showNotifications: boolean
+  onToggleNotifications: () => void
+  onMarkNotificationsRead: () => void
 }) {
-  const [vehicleFilter, setVehicleFilter] = useState('All')
-  const [categoryFilter, setCategoryFilter] = useState('All')
-  const [warehouseFilter, setWarehouseFilter] = useState('All')
+  const [vehicleFilter, setVehicleFilter] = useState('All Models')
+  const [makeYearFilter, setMakeYearFilter] = useState('All Years')
+  const [exteriorPartFilter, setExteriorPartFilter] = useState('All Exterior Parts')
+  const [monthYearFilter, setMonthYearFilter] = useState('All Months')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
 
-  const vehicleOptions = ['All', 'CAMRY 2024', 'RAV4 2023+', 'COROLLA HB', 'HIGHLANDER']
-  const categoryOptions = ['All', 'Body & Exterior', 'Lighting', 'Interior', 'Engine']
-  const warehouseOptions = ['All', 'Navala Central', 'Colombo South', 'Negombo Main']
+  const vehicleOptions = ['All Models', 'Camry', 'RAV4', 'Corolla', 'Highlander']
+  const makeYearOptions = ['All Years', '2023', '2024', '2025']
+  const exteriorPartOptions = ['All Exterior Parts', 'Headlight', 'Fog Lamp', 'Bumper', 'Mirror Glass']
+  const monthOptions = ['All Months', 'Sep 2024', 'Oct 2024', 'Nov 2024', 'Dec 2024']
 
   const filteredRows = demandRows.filter(row => {
     const matchesSearch = [row.name, row.pn, row.compat].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesVehicle = vehicleFilter === 'All' || row.compat.includes(vehicleFilter)
-    const matchesWarehouse = warehouseFilter === 'All' || row.compat.includes(warehouseFilter)
-    return matchesSearch && matchesVehicle && matchesWarehouse
+    const matchesVehicle = vehicleFilter === 'All Models' || row.vehicleModel === vehicleFilter
+    const matchesYear = makeYearFilter === 'All Years' || String(row.makeYear) === makeYearFilter
+    const matchesPart = exteriorPartFilter === 'All Exterior Parts' || row.exteriorPart === exteriorPartFilter
+    const matchesMonth = monthYearFilter === 'All Months' || row.monthYear === monthYearFilter
+    return matchesSearch && matchesVehicle && matchesYear && matchesPart && matchesMonth
   })
 
   const handleClearAll = () => {
-    setVehicleFilter('All')
-    setCategoryFilter('All')
-    setWarehouseFilter('All')
+    setVehicleFilter('All Models')
+    setMakeYearFilter('All Years')
+    setExteriorPartFilter('All Exterior Parts')
+    setMonthYearFilter('All Months')
     onClear()
   }
 
   return (
     <div className="flex flex-1 flex-col">
-      <TopNav searchPlaceholder="Search components..." value={searchTerm} onChange={onSearchChange} />
+      <TopNav
+        searchPlaceholder="Search components..."
+        value={searchTerm}
+        onChange={onSearchChange}
+        userName={userName}
+        userRole={userRole}
+        warehouseName={warehouseName}
+        profilePicture={profilePicture}
+        onOpenProfile={onOpenProfile}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        showNotifications={showNotifications}
+        onToggleNotifications={onToggleNotifications}
+        onMarkNotificationsRead={onMarkNotificationsRead}
+      />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         {/* Page header */}
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -406,15 +605,46 @@ function DemandForecastView({
             )}
           </div>
 
-          {/* Category Dropdown */}
+          {/* Make Year Dropdown */}
           <div className="relative">
-            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'category' ? null : 'category')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
-              Category: {categoryFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
+            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'year' ? null : 'year')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
+              Make Year: {makeYearFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
             </button>
-            {openDropdown === 'category' && (
+            {openDropdown === 'year' && (
+              <div className="absolute top-10 left-0 z-20 min-w-[140px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
+                {makeYearOptions.map(opt => (
+                  <button key={opt} type="button" onClick={() => { setMakeYearFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === makeYearFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Exterior Part Dropdown */}
+          <div className="relative">
+            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'part' ? null : 'part')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
+              Exterior Part: {exteriorPartFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
+            </button>
+            {openDropdown === 'part' && (
+              <div className="absolute top-10 left-0 z-20 min-w-[170px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
+                {exteriorPartOptions.map(opt => (
+                  <button key={opt} type="button" onClick={() => { setExteriorPartFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === exteriorPartFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'month' ? null : 'month')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
+              Month & Year: {monthYearFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
+            </button>
+            {openDropdown === 'month' && (
               <div className="absolute top-10 left-0 z-20 min-w-[160px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
-                {categoryOptions.map(opt => (
-                  <button key={opt} type="button" onClick={() => { setCategoryFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === categoryFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
+                {monthOptions.map(opt => (
+                  <button key={opt} type="button" onClick={() => { setMonthYearFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === monthYearFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
                     {opt}
                   </button>
                 ))}
@@ -422,25 +652,6 @@ function DemandForecastView({
             )}
           </div>
 
-          {/* Warehouse Dropdown */}
-          <div className="relative">
-            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'warehouse' ? null : 'warehouse')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
-              Warehouse: {warehouseFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
-            </button>
-            {openDropdown === 'warehouse' && (
-              <div className="absolute top-10 left-0 z-20 min-w-[150px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
-                {warehouseOptions.map(opt => (
-                  <button key={opt} type="button" onClick={() => { setWarehouseFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === warehouseFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <button className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
-            📅 Oct 1 – Oct 31, 2023
-          </button>
           <button type="button" onClick={handleClearAll} className="ml-auto text-[13px] font-bold text-[#bd0014]">Clear All</button>
         </div>
 
@@ -452,7 +663,7 @@ function DemandForecastView({
               <table className="min-w-[900px] w-full">
                 <thead className="bg-[#efeded]">
                   <tr>
-                    {['SPARE PART DETAILS', 'COMPATIBILITY', 'PREDICTED DEMAND', 'CURRENT STOCK', 'STOCK HEALTH', 'CONFIDENCE', 'ACTION'].map(h => (
+                    {['SPARE PART DETAILS', 'COMPATIBILITY', 'PREDICTED DEMAND', 'CURRENT STOCK', 'STOCK HEALTH', 'DEMAND', 'ACTION'].map(h => (
                       <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                     ))}
                   </tr>
@@ -571,10 +782,30 @@ function PredictionQueueView({
   searchTerm,
   onSearchChange,
   onAction,
+  userName,
+  userRole,
+  warehouseName,
+  profilePicture,
+  onOpenProfile,
+  notifications,
+  unreadCount,
+  showNotifications,
+  onToggleNotifications,
+  onMarkNotificationsRead,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
+  userName: string
+  userRole: string
+  warehouseName: string
+  profilePicture?: string
+  onOpenProfile: () => void
+  notifications: Array<{ id: number; title: string; detail: string; time: string; read: boolean }>
+  unreadCount: number
+  showNotifications: boolean
+  onToggleNotifications: () => void
+  onMarkNotificationsRead: () => void
 }) {
   const [queueRows, setQueueRows] = useState(predRows)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -639,7 +870,21 @@ function PredictionQueueView({
 
   return (
     <div className="flex flex-1 flex-col">
-      <TopNav searchPlaceholder="Search orders or parts..." value={searchTerm} onChange={onSearchChange} />
+      <TopNav
+        searchPlaceholder="Search orders or parts..."
+        value={searchTerm}
+        onChange={onSearchChange}
+        userName={userName}
+        userRole={userRole}
+        warehouseName={warehouseName}
+        profilePicture={profilePicture}
+        onOpenProfile={onOpenProfile}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        showNotifications={showNotifications}
+        onToggleNotifications={onToggleNotifications}
+        onMarkNotificationsRead={onMarkNotificationsRead}
+      />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -661,7 +906,7 @@ function PredictionQueueView({
         <div className="mb-6 flex flex-wrap items-center gap-4 rounded-[4px] border border-[#e9bcb7] bg-white p-3">
           {/* Confidence Score Dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#5f5e5e]">Confidence Score</span>
+            <span className="text-[13px] text-[#5f5e5e]">Demand Level</span>
             <div className="relative">
               <button type="button" onClick={() => setOpenDropdown(openDropdown === 'confidence' ? null : 'confidence')} className="flex h-8 min-w-[120px] items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-[#f5f3f3] px-3 text-[13px] text-[#1b1c1c]">
                 {confidenceFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
@@ -732,7 +977,7 @@ function PredictionQueueView({
                       setSelectedIds(filteredRows.map(row => row.id))
                     }
                   }} className="size-4" /></th>
-                  {['ACCIDENT ID / DATE', 'VEHICLE TYPE', 'PREDICTED PARTS NEEDED', 'CONFIDENCE', 'HUMAN ACTION'].map(h => (
+                  {['ACCIDENT ID / DATE', 'VEHICLE TYPE', 'PREDICTED PARTS NEEDED', 'DEMAND', 'HUMAN ACTION'].map(h => (
                     <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                   ))}
                 </tr>
@@ -827,14 +1072,60 @@ function InventoryFulfillmentView({
   searchTerm,
   onSearchChange,
   onAction,
+  userName,
+  userRole,
+  warehouseName,
+  profilePicture,
+  onOpenProfile,
+  notifications,
+  unreadCount,
+  showNotifications,
+  onToggleNotifications,
+  onMarkNotificationsRead,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
+  userName: string
+  userRole: string
+  warehouseName: string
+  profilePicture?: string
+  onOpenProfile: () => void
+  notifications: Array<{ id: number; title: string; detail: string; time: string; read: boolean }>
+  unreadCount: number
+  showNotifications: boolean
+  onToggleNotifications: () => void
+  onMarkNotificationsRead: () => void
 }) {
   const [statusFilter, setStatusFilter] = useState('All Status')
   const [workshopFilter, setWorkshopFilter] = useState('All Workshops')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [showAddWorkshop, setShowAddWorkshop] = useState(false)
+  const [workshopCards, setWorkshopCards] = useState(workshops)
+  const [workshopForm, setWorkshopForm] = useState({ org: '', name: '', pending: '0', urgent: '0', transit: '0' })
+
+  const handleAddWorkshop = () => {
+    const org = workshopForm.org.trim() || 'New Workshop'
+    const name = workshopForm.name.trim() || `Workshop #${String(workshopCards.length + 1).padStart(3, '0')}`
+    const pendingValue = Number(workshopForm.pending) || 0
+    const urgentValue = Number(workshopForm.urgent) || 0
+
+    setWorkshopCards(current => [
+      {
+        org,
+        name,
+        pending: pendingValue,
+        urgent: urgentValue > 0 ? `${urgentValue} CRITICAL` : '0 ALERT',
+        urgentColor: urgentValue > 0 ? '#bd0014' : '#b45309',
+        urgentBg: urgentValue > 0 ? '#fef2f2' : '#fffbeb',
+        transit: `${workshopForm.transit || '0'} SKUS`,
+      },
+      ...current,
+    ])
+    setWorkshopForm({ org: '', name: '', pending: '0', urgent: '0', transit: '0' })
+    setShowAddWorkshop(false)
+    onAction(`Workshop ${name} added successfully.`)
+  }
 
   const statusOptions = ['All Status', 'PENDING', 'BACKORDERED', 'IN TRANSIT', 'ALLOCATED']
   const workshopOptions = ['All Workshops', 'Workshop #012', 'Workshop #045', 'Workshop #008']
@@ -848,7 +1139,21 @@ function InventoryFulfillmentView({
 
   return (
     <div className="flex flex-1 flex-col">
-      <TopNav searchPlaceholder="Search inventory..." value={searchTerm} onChange={onSearchChange} />
+      <TopNav
+        searchPlaceholder="Search inventory..."
+        value={searchTerm}
+        onChange={onSearchChange}
+        userName={userName}
+        userRole={userRole}
+        warehouseName={warehouseName}
+        profilePicture={profilePicture}
+        onOpenProfile={onOpenProfile}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        showNotifications={showNotifications}
+        onToggleNotifications={onToggleNotifications}
+        onMarkNotificationsRead={onMarkNotificationsRead}
+      />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -889,15 +1194,67 @@ function InventoryFulfillmentView({
               )}
             </div>
 
+            <button type="button" onClick={() => setShowAddWorkshop(true)} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
+              + Add Workshop
+            </button>
+
             <button type="button" onClick={() => onAction('Allocation logic ran successfully.')} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
               ↺ Run Allocation Logic
             </button>
           </div>
         </div>
 
+        {showAddWorkshop && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+            <div className="w-full max-w-lg rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">Workshop</p>
+                  <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Add workshop details</h3>
+                </div>
+                <button type="button" onClick={() => setShowAddWorkshop(false)} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Workshop organization</label>
+                  <input value={workshopForm.org} onChange={event => setWorkshopForm(current => ({ ...current, org: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Workshop name</label>
+                  <input value={workshopForm.name} onChange={event => setWorkshopForm(current => ({ ...current, name: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Pending</label>
+                    <input value={workshopForm.pending} onChange={event => setWorkshopForm(current => ({ ...current, pending: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Urgent</label>
+                    <input value={workshopForm.urgent} onChange={event => setWorkshopForm(current => ({ ...current, urgent: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Transit</label>
+                    <input value={workshopForm.transit} onChange={event => setWorkshopForm(current => ({ ...current, transit: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setShowAddWorkshop(false)} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleAddWorkshop} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+                  Save workshop
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Workshop cards */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {workshops.map(w => (
+          {workshopCards.map(w => (
             <div key={w.name} className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">{w.org}</p>
               <p className="mt-1 text-[18px] font-black tracking-[-0.18px] text-[#1b1c1c]">{w.name}</p>
@@ -1067,12 +1424,32 @@ function PurchaseOrdersView({
   onAction,
   aiReviewEnabled,
   setAiReviewEnabled,
+  userName,
+  userRole,
+  warehouseName,
+  profilePicture,
+  onOpenProfile,
+  notifications,
+  unreadCount,
+  showNotifications,
+  onToggleNotifications,
+  onMarkNotificationsRead,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
   aiReviewEnabled: boolean
   setAiReviewEnabled: (value: boolean) => void
+  userName: string
+  userRole: string
+  warehouseName: string
+  profilePicture?: string
+  onOpenProfile: () => void
+  notifications: Array<{ id: number; title: string; detail: string; time: string; read: boolean }>
+  unreadCount: number
+  showNotifications: boolean
+  onToggleNotifications: () => void
+  onMarkNotificationsRead: () => void
 }) {
   const [rows, setRows] = useState(poRows)
 
@@ -1089,7 +1466,21 @@ function PurchaseOrdersView({
 
   return (
     <div className="flex flex-1 flex-col">
-      <TopNav searchPlaceholder="Search POs, SKU, Suppliers..." value={searchTerm} onChange={onSearchChange} />
+      <TopNav
+        searchPlaceholder="Search POs, SKU, Suppliers..."
+        value={searchTerm}
+        onChange={onSearchChange}
+        userName={userName}
+        userRole={userRole}
+        warehouseName={warehouseName}
+        profilePicture={profilePicture}
+        onOpenProfile={onOpenProfile}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        showNotifications={showNotifications}
+        onToggleNotifications={onToggleNotifications}
+        onMarkNotificationsRead={onMarkNotificationsRead}
+      />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         <div className="flex min-h-full flex-col gap-8 xl:flex-row">
           {/* Left: table */}
@@ -1118,13 +1509,13 @@ function PurchaseOrdersView({
                   <thead className="bg-[#efeded]">
                     <tr>
                       {[
-                        { label: 'Supplier\nName', align: 'left' },
-                        { label: 'Part\nNumber', align: 'left' },
-                        { label: 'Description', align: 'left' },
-                        { label: 'Rec. Qty', align: 'right' },
-                        { label: 'Unit\nPrice\nLKR.', align: 'right' },
-                        { label: 'Total\nLKR.', align: 'right' },
-                        { label: 'Confidence', align: 'center' },
+                        { label: 'SUPPLIER\nNAME', align: 'left' },
+                        { label: 'PART\nNUMBER', align: 'left' },
+                        { label: 'DESCRIPTION', align: 'left' },
+                        { label: 'REC. QTY', align: 'right' },
+                        { label: 'UNIT\nPRICE\nLKR.', align: 'right' },
+                        { label: 'TOTAL\nLKR.', align: 'right' },
+                        { label: 'DEMAND', align: 'center' },
                       ].map(h => (
                         <th key={h.label} className={`border-b border-[#e9bcb7] px-4 py-3 text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e] whitespace-pre-line text-${h.align}`}>
                           {h.label}
@@ -1463,12 +1854,193 @@ interface UserAccount {
   fullName: string
   email: string
   password: string
+  isActive: boolean
+}
+
+interface UserProfile {
+  fullName: string
+  role: string
+  warehouse: string
+  phone: string
+  bio: string
+  accent: string
+  profilePicture: string
+  isAccountActive: boolean
+}
+
+interface NotificationItem {
+  id: number
+  title: string
+  detail: string
+  time: string
+  read: boolean
+}
+
+function buildDefaultProfile(fullName: string, email: string): UserProfile {
+  return {
+    fullName: fullName || 'User',
+    role: 'Operations Manager',
+    warehouse: 'Navala Central',
+    phone: '+94 77 123 4567',
+    bio: `Warehouse operations lead for ${email || 'Toyota logistics'}.`,
+    accent: '#bd0014',
+    profilePicture: '',
+    isAccountActive: true,
+  }
+}
+
+function UserProfileEditor({
+  profile,
+  onChange,
+  onClose,
+  onSave,
+  onPhotoUpload,
+}: {
+  profile: UserProfile
+  onChange: (field: keyof UserProfile, value: string | boolean) => void
+  onClose: () => void
+  onSave: () => void
+  onPhotoUpload: (value: string) => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-2xl rounded-[18px] border border-[#e9bcb7] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <div className="flex items-center justify-between border-b border-[#e9bcb7] px-6 py-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">Profile settings</p>
+            <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Customize your profile</h3>
+          </div>
+          <button type="button" onClick={onClose} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
+        </div>
+
+        <div className="grid gap-5 p-6 md:grid-cols-[180px_1fr]">
+          <div className="flex flex-col items-center gap-3 rounded-[12px] border border-[#e9bcb7] bg-[#fbf9f8] p-5">
+            {profile.profilePicture ? (
+              <img src={profile.profilePicture} alt={profile.fullName} className="flex size-20 items-center justify-center overflow-hidden rounded-[18px] object-cover" />
+            ) : (
+              <div
+                className="flex size-20 items-center justify-center rounded-[18px] text-[28px] font-black text-white"
+                style={{ backgroundColor: profile.accent }}
+              >
+                {profile.fullName.split(' ').filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase() ?? '').join('') || 'U'}
+              </div>
+            )}
+            <label className="w-full cursor-pointer rounded-[8px] border border-[#e9bcb7] bg-white px-3 py-2 text-center text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
+              Upload Photo
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={event => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                      onPhotoUpload(reader.result)
+                    }
+                  }
+                  reader.readAsDataURL(file)
+                }}
+              />
+            </label>
+            <div className="w-full">
+              <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Accent color</label>
+              <input
+                type="color"
+                value={profile.accent}
+                onChange={event => onChange('accent', event.target.value)}
+                className="h-10 w-full cursor-pointer rounded-[8px] border border-[#e9bcb7] bg-white p-1"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Full name</label>
+              <input
+                value={profile.fullName}
+                onChange={event => onChange('fullName', event.target.value)}
+                className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Role</label>
+              <input
+                value={profile.role}
+                onChange={event => onChange('role', event.target.value)}
+                className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Warehouse</label>
+                <input
+                  value={profile.warehouse}
+                  onChange={event => onChange('warehouse', event.target.value)}
+                  className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Phone</label>
+                <input
+                  value={profile.phone}
+                  onChange={event => onChange('phone', event.target.value)}
+                  className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Bio</label>
+              <textarea
+                value={profile.bio}
+                onChange={event => onChange('bio', event.target.value)}
+                rows={4}
+                className="w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 py-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]"
+              />
+            </div>
+
+            <div className="rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Account status</p>
+                  <p className="mt-1 text-[13px] text-[#1b1c1c]">{profile.isAccountActive ? 'Active account' : 'Deactivated account'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onChange('isAccountActive', !profile.isAccountActive)}
+                  className={`relative h-6 w-11 rounded-full transition ${profile.isAccountActive ? 'bg-[#bd0014]' : 'bg-[#d4d4d4]'}`}
+                >
+                  <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${profile.isAccountActive ? 'right-1' : 'left-1'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-[#e9bcb7] bg-[#fbf9f8] px-6 py-4">
+          <button type="button" onClick={onClose} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
+            Cancel
+          </button>
+          <button type="button" onClick={onSave} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+            Save profile
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
+  const [isSupportOpen, setIsSupportOpen] = useState(false)
+  const [isNewOrderOpen, setIsNewOrderOpen] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -1480,16 +2052,98 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusMessage, setStatusMessage] = useState('System ready')
   const [aiReviewEnabled, setAiReviewEnabled] = useState(true)
-  const [registeredAccounts, setRegisteredAccounts] = useState<UserAccount[]>([])
+  const [registeredAccounts, setRegisteredAccounts] = useState<UserAccount[]>(() => {
+    try {
+      const saved = localStorage.getItem('toyota-accounts')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+  const [profilesByEmail, setProfilesByEmail] = useState<Record<string, UserProfile>>(() => {
+    try {
+      const saved = localStorage.getItem('toyota-profiles')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+  const [activeUserEmail, setActiveUserEmail] = useState<string>(() => {
+    try {
+      return localStorage.getItem('toyota-active-user-email') || ''
+    } catch {
+      return ''
+    }
+  })
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    { id: 1, title: 'Low stock alert', detail: 'Outer Mirror Glass is below safety threshold in Navala Central.', time: '2 min ago', read: false },
+    { id: 2, title: 'Transfer approved', detail: 'Workshop #008 transfer was approved for L Side Mirror.', time: '18 min ago', read: false },
+    { id: 3, title: 'Forecast update', detail: 'New demand spike detected for Corolla Cross wheel arch parts.', time: '1 hour ago', read: true },
+  ])
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    if (activeUserEmail && profilesByEmail[activeUserEmail]) {
+      return profilesByEmail[activeUserEmail]
+    }
+    return buildDefaultProfile('Nuwan Perera', 'nuwan@toyota.com')
+  })
+
+  React.useEffect(() => {
+    localStorage.setItem('toyota-accounts', JSON.stringify(registeredAccounts))
+  }, [registeredAccounts])
+
+  React.useEffect(() => {
+    localStorage.setItem('toyota-profiles', JSON.stringify(profilesByEmail))
+  }, [profilesByEmail])
+
+  React.useEffect(() => {
+    if (activeUserEmail) {
+      localStorage.setItem('toyota-active-user-email', activeUserEmail)
+    }
+  }, [activeUserEmail])
+
+  const markNotificationsRead = () => {
+    setNotifications(current => current.map(item => ({ ...item, read: true })))
+  }
+
+  const handleProfileChange = (field: keyof UserProfile, value: string | boolean) => {
+    setUserProfile(current => ({ ...current, [field]: value }))
+  }
+
+  const handleSaveProfile = () => {
+    if (!activeUserEmail) {
+      setStatusMessage('No active user profile to save.')
+      setIsProfileOpen(false)
+      return
+    }
+
+    const nextProfile = { ...userProfile, fullName: userProfile.fullName.trim() || 'User' }
+    setProfilesByEmail(current => ({ ...current, [activeUserEmail]: nextProfile }))
+    setUserProfile(nextProfile)
+    setStatusMessage(`Profile updated for ${nextProfile.fullName}.`)
+    setIsProfileOpen(false)
+
+    setNotifications(current => [
+      {
+        id: Date.now(),
+        title: 'Profile saved',
+        detail: `${nextProfile.fullName}'s details were updated successfully.`,
+        time: 'Just now',
+        read: false,
+      },
+      ...current,
+    ].slice(0, 5))
+  }
 
   const handleNavigate = (nextView: View) => {
     setView(nextView)
     setStatusMessage(`Viewing ${nextView}.`)
+    setShowNotifications(false)
   }
 
   const handleLogin = () => {
     if (isRegistering) {
-      // Registration validation
       if (!fullName.trim()) {
         setError('Please enter your full name.')
         return
@@ -1507,40 +2161,63 @@ export default function App() {
         return
       }
 
-      // Check if email already registered
       if (registeredAccounts.some(acc => acc.email.toLowerCase() === email.toLowerCase())) {
-        setError('This email is already registered.')
+        setError('This email is already registered to one profile.')
         return
       }
 
-      // Save the account
-      setRegisteredAccounts([...registeredAccounts, { fullName, email, password }])
+      const normalizedEmail = email.toLowerCase()
+      const newAccount: UserAccount = { fullName: fullName.trim(), email: normalizedEmail, password, isActive: true }
+      const newProfile = buildDefaultProfile(fullName.trim(), normalizedEmail)
+
+      setRegisteredAccounts(current => [...current, newAccount])
+      setProfilesByEmail(current => ({ ...current, [normalizedEmail]: newProfile }))
+      setActiveUserEmail(normalizedEmail)
+      setUserProfile(newProfile)
       setError('')
       setIsLoggedIn(true)
-      setStatusMessage(`Welcome, ${fullName}. Dashboard ready.`)
-    } else {
-      // Login validation
-      if (!email.trim() || !password.trim()) {
-        setError('Please enter both email and password.')
-        return
-      }
-
-      // Check against registered accounts
-      const account = registeredAccounts.find(
-        acc => acc.email.toLowerCase() === email.toLowerCase() && acc.password === password
-      )
-
-      // Also allow demo password
-      if (!account && password !== 'password') {
-        setError('Invalid email or password. Try "password" as the demo password.')
-        return
-      }
-
-      setError('')
-      setIsLoggedIn(true)
-      const displayName = account ? account.fullName : 'User'
-      setStatusMessage(`Welcome back, ${displayName}. Dashboard ready.`)
+      setStatusMessage(`Welcome, ${fullName.trim()}. Dashboard ready.`)
+      setNotifications(current => [
+        { id: Date.now(), title: 'Welcome', detail: `Account created for ${fullName.trim()}.`, time: 'Just now', read: false },
+        ...current,
+      ].slice(0, 5))
+      return
     }
+
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password.')
+      return
+    }
+
+    const normalizedEmail = email.toLowerCase()
+    const account = registeredAccounts.find(
+      acc => acc.email.toLowerCase() === normalizedEmail && acc.password === password
+    )
+
+    if (!account && password !== 'password') {
+      setError('Invalid email or password. Try "password" as the demo password.')
+      return
+    }
+
+    const activeAccount = account ?? registeredAccounts.find(acc => acc.email.toLowerCase() === normalizedEmail)
+    if (activeAccount && !activeAccount.isActive) {
+      setError('This account has been deactivated. Please contact your administrator.')
+      return
+    }
+
+    setError('')
+    setIsLoggedIn(true)
+    setActiveUserEmail(normalizedEmail)
+    const savedProfile = profilesByEmail[normalizedEmail]
+    const displayName = activeAccount ? activeAccount.fullName : 'User'
+    const profile = savedProfile ? { ...savedProfile, fullName: savedProfile.fullName || displayName } : buildDefaultProfile(displayName, normalizedEmail)
+
+    setUserProfile(profile)
+    setStatusMessage(`Welcome back, ${displayName}. Dashboard ready.`)
+    setNotifications(current => [
+      { id: Date.now(), title: 'Signed in', detail: `${displayName} has entered the dashboard.`, time: 'Just now', read: false },
+      ...current,
+    ].slice(0, 5))
   }
 
   const handleToggleMode = () => {
@@ -1567,6 +2244,24 @@ export default function App() {
     setError('')
     setStatusMessage('System ready')
     setView('demand')
+    setShowNotifications(false)
+    setUserProfile(buildDefaultProfile('Nuwan Perera', 'nuwan@toyota.com'))
+    setActiveUserEmail('')
+  }
+
+  const handleSupportRequest = () => {
+    setStatusMessage('Support request submitted. A team member will contact you shortly.')
+    setIsSupportOpen(false)
+  }
+
+  const handleNewOrderSave = (partName: string, supplier: string, quantity: string) => {
+    const cleanPartName = partName.trim() || 'New part'
+    const cleanSupplier = supplier.trim() || 'Preferred supplier'
+    const cleanQuantity = quantity.trim() || '0'
+
+    setStatusMessage(`New order created for ${cleanPartName} from ${cleanSupplier} (${cleanQuantity} units).`)
+    setIsNewOrderOpen(false)
+    setView('purchase')
   }
 
   if (showLanding && !isLoggedIn) {
@@ -1601,7 +2296,9 @@ export default function App() {
       className="flex min-h-screen w-full flex-col overflow-x-hidden bg-[#fbf9f8] lg:h-screen lg:flex-row"
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
     >
-      <Sidebar active={view} onNavigate={handleNavigate} onSignOut={handleSignOut} />
+      <Sidebar active={view} onNavigate={handleNavigate} onSignOut={handleSignOut} onOpenSupport={() => setIsSupportOpen(true)} onOpenNewOrder={() => setIsNewOrderOpen(true)} />
+      {isSupportOpen && <SupportModal onClose={() => setIsSupportOpen(false)} onSubmit={handleSupportRequest} />}
+      {isNewOrderOpen && <NewOrderModal onClose={() => setIsNewOrderOpen(false)} onSubmit={handleNewOrderSave} />}
       <div className="min-w-0 flex-1 overflow-y-auto">
         {statusMessage && (
           <div className="border-b border-[#e9bcb7] bg-[#fff7f5] px-4 py-2 text-[12px] font-medium text-[#bd0014]">
@@ -1614,6 +2311,19 @@ export default function App() {
             onSearchChange={setSearchTerm}
             onAction={setStatusMessage}
             onClear={() => setSearchTerm('')}
+            userName={userProfile.fullName}
+            userRole={userProfile.role}
+            warehouseName={userProfile.warehouse}
+            profilePicture={userProfile.profilePicture}
+            onOpenProfile={() => setIsProfileOpen(true)}
+            notifications={notifications}
+            unreadCount={notifications.filter(item => !item.read).length}
+            showNotifications={showNotifications}
+            onToggleNotifications={() => {
+              setShowNotifications(value => !value)
+              if (!showNotifications) markNotificationsRead()
+            }}
+            onMarkNotificationsRead={markNotificationsRead}
           />
         )}
         {view === 'prediction' && (
@@ -1621,6 +2331,19 @@ export default function App() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onAction={setStatusMessage}
+            userName={userProfile.fullName}
+            userRole={userProfile.role}
+            warehouseName={userProfile.warehouse}
+            profilePicture={userProfile.profilePicture}
+            onOpenProfile={() => setIsProfileOpen(true)}
+            notifications={notifications}
+            unreadCount={notifications.filter(item => !item.read).length}
+            showNotifications={showNotifications}
+            onToggleNotifications={() => {
+              setShowNotifications(value => !value)
+              if (!showNotifications) markNotificationsRead()
+            }}
+            onMarkNotificationsRead={markNotificationsRead}
           />
         )}
         {view === 'inventory' && (
@@ -1628,6 +2351,19 @@ export default function App() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onAction={setStatusMessage}
+            userName={userProfile.fullName}
+            userRole={userProfile.role}
+            warehouseName={userProfile.warehouse}
+            profilePicture={userProfile.profilePicture}
+            onOpenProfile={() => setIsProfileOpen(true)}
+            notifications={notifications}
+            unreadCount={notifications.filter(item => !item.read).length}
+            showNotifications={showNotifications}
+            onToggleNotifications={() => {
+              setShowNotifications(value => !value)
+              if (!showNotifications) markNotificationsRead()
+            }}
+            onMarkNotificationsRead={markNotificationsRead}
           />
         )}
         {view === 'purchase' && (
@@ -1637,9 +2373,32 @@ export default function App() {
             onAction={setStatusMessage}
             aiReviewEnabled={aiReviewEnabled}
             setAiReviewEnabled={setAiReviewEnabled}
+            userName={userProfile.fullName}
+            userRole={userProfile.role}
+            warehouseName={userProfile.warehouse}
+            profilePicture={userProfile.profilePicture}
+            onOpenProfile={() => setIsProfileOpen(true)}
+            notifications={notifications}
+            unreadCount={notifications.filter(item => !item.read).length}
+            showNotifications={showNotifications}
+            onToggleNotifications={() => {
+              setShowNotifications(value => !value)
+              if (!showNotifications) markNotificationsRead()
+            }}
+            onMarkNotificationsRead={markNotificationsRead}
           />
         )}
       </div>
+
+      {isProfileOpen && (
+        <UserProfileEditor
+          profile={userProfile}
+          onChange={handleProfileChange}
+          onClose={() => setIsProfileOpen(false)}
+          onSave={handleSaveProfile}
+          onPhotoUpload={value => setUserProfile(current => ({ ...current, profilePicture: value }))}
+        />
+      )}
     </div>
   )
 }
