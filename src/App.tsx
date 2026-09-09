@@ -121,15 +121,21 @@ function Sidebar({
   onSignOut,
   onOpenSupport,
   onOpenNewOrder,
+  isNightMode,
 }: {
   active: View
   onNavigate: (v: View) => void
   onSignOut: () => void
   onOpenSupport: () => void
   onOpenNewOrder: () => void
+  isNightMode: boolean
 }) {
+  const sidebarClasses = isNightMode ? 'border-[#374151] bg-[#111827]' : 'border-[#e9bcb7] bg-white'
+  const mutedText = isNightMode ? 'text-gray-300' : 'text-[#5f5e5e]'
+  const activeBg = isNightMode ? '#1f2937' : '#e9e8e7'
+  const activeText = '#bd0014'
   return (
-    <aside className="flex w-full flex-col border-b border-[#e9bcb7] bg-white lg:w-[200px] lg:border-b-0 lg:border-r">
+    <aside className={`flex w-full flex-col border-b lg:w-[200px] lg:border-b-0 lg:border-r ${sidebarClasses}`}>
       {/* Brand */}
       <div className="flex items-center gap-3 px-4 pb-4 pt-4 lg:pb-10 lg:pt-6">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[2px] bg-[#bd0014]">
@@ -154,7 +160,7 @@ function Sidebar({
                 onClick={() => onNavigate(item.id)}
                 className="relative flex h-12 shrink-0 items-center gap-3 px-3 text-left lg:w-full lg:px-4"
                 style={{
-                  backgroundColor: isActive ? '#e9e8e7' : 'transparent',
+                  backgroundColor: isActive ? activeBg : 'transparent',
                   marginLeft: isActive ? 4 : 0,
                   marginRight: isActive ? 8 : 0,
                   width: isActive ? 'calc(100% - 12px)' : 'auto',
@@ -165,12 +171,12 @@ function Sidebar({
                 {isActive && (
                   <div className="absolute inset-y-0 left-0 w-1 bg-[#bd0014]" />
                 )}
-                <span style={{ color: isActive ? '#bd0014' : '#5f5e5e', paddingLeft: isActive ? 4 : 0 }}>
+                <span style={{ color: isActive ? activeText : isNightMode ? '#d1d5db' : '#5f5e5e', paddingLeft: isActive ? 4 : 0 }}>
                   <item.icon />
                 </span>
                 <span
                   className="whitespace-nowrap text-[11px] font-bold tracking-[0.55px]"
-                  style={{ color: isActive ? '#bd0014' : '#5f5e5e' }}
+                  style={{ color: isActive ? activeText : isNightMode ? '#d1d5db' : '#5f5e5e' }}
                 >
                   {item.label}
                 </span>
@@ -188,16 +194,16 @@ function Sidebar({
             <span className="text-[11px] font-bold tracking-[0.55px] text-white">New Order</span>
           </button>
           <button type="button" onClick={onOpenSupport} className="flex h-[52px] w-full items-center gap-3 px-1 text-left">
-            <span className="text-[#5f5e5e]"><IconSupport /></span>
-            <span className="text-[13px] text-[#5f5e5e]">Support</span>
+            <span className={mutedText}><IconSupport /></span>
+            <span className={`text-[13px] ${mutedText}`}>Support</span>
           </button>
           <button
             type="button"
             onClick={onSignOut}
             className="flex h-10 w-full items-center gap-3 px-1 text-left"
           >
-            <span className="text-[#5f5e5e]"><IconSignOut /></span>
-            <span className="text-[13px] text-[#5f5e5e]">Sign Out</span>
+            <span className={mutedText}><IconSignOut /></span>
+            <span className={`text-[13px] ${mutedText}`}>Sign Out</span>
           </button>
         </div>
       </div>
@@ -239,14 +245,24 @@ function SupportModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: ()
   )
 }
 
-function NewOrderModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (partName: string, supplier: string, quantity: string) => void }) {
-  const [partName, setPartName] = useState('Headlamp Assembly')
-  const [supplier, setSupplier] = useState('Toyota Parts Co.')
-  const [quantity, setQuantity] = useState('120')
+type NewOrderDetail = {
+  supplier: string
+  vehicle: string
+  part: string
+  quantity: string
+  unitPrice: string
+}
+
+function NewOrderModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (details: NewOrderDetail[]) => void }) {
+  const [details, setDetails] = useState<NewOrderDetail[]>([
+    { supplier: 'Toyota Parts Co.', vehicle: '', part: '', quantity: '', unitPrice: '' },
+  ])
+
+  const total = details.reduce((sum, detail) => sum + (Number(detail.quantity) || 0) * (Number(detail.unitPrice) || 0), 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-lg rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+      <div className="w-full max-w-6xl rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
         <div className="mb-5 flex items-start justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">New order</p>
@@ -255,20 +271,31 @@ function NewOrderModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
           <button type="button" onClick={onClose} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Part name</label>
-            <input value={partName} onChange={event => setPartName(event.target.value)} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Order details</label>
+            <button type="button" onClick={() => setDetails(current => [...current, { supplier: '', vehicle: '', part: '', quantity: '', unitPrice: '' }])} className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#bd0014]">+ Add row</button>
           </div>
-
-          <div>
-            <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Supplier</label>
-            <input value={supplier} onChange={event => setSupplier(event.target.value)} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+          <div className="overflow-x-auto rounded-[8px] border border-[#e9bcb7]">
+            <div className="min-w-[980px]">
+              <div className="grid grid-cols-[1.2fr_1.15fr_1.5fr_0.7fr_1fr_auto] gap-3 bg-[#efeded] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">
+                <span>Supplier name</span><span>Vehicle model / year</span><span>Part name / No</span><span>Quantity</span><span>Unit price</span><span />
+              </div>
+              <div className="space-y-2 p-2">
+                {details.map((detail, index) => (
+                  <div key={index} className="grid grid-cols-[1.2fr_1.15fr_1.5fr_0.7fr_1fr_auto] gap-3">
+                    {(['supplier', 'vehicle', 'part', 'quantity', 'unitPrice'] as const).map(field => (
+                      <input key={field} type={field === 'quantity' || field === 'unitPrice' ? 'number' : 'text'} min={field === 'quantity' || field === 'unitPrice' ? '0' : undefined} value={detail[field]} onChange={event => setDetails(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: event.target.value } : item))} placeholder={field === 'supplier' ? 'Supplier name' : field === 'vehicle' ? 'Model / year' : field === 'part' ? 'Part name / No' : field === 'quantity' ? 'Qty' : 'Unit price'} className="h-10 min-w-0 rounded-[8px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                    ))}
+                    <button type="button" disabled={details.length === 1} onClick={() => setDetails(current => current.filter((_, itemIndex) => itemIndex !== index))} className="h-10 px-2 text-[20px] leading-none text-[#5f5e5e] disabled:opacity-30">×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-
-          <div>
-            <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Quantity</label>
-            <input value={quantity} onChange={event => setQuantity(event.target.value)} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+          <div className="mt-4 flex justify-end gap-4 border-t border-[#e9bcb7] pt-4">
+            <span className="text-[13px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Total</span>
+            <span className="text-[20px] font-black text-[#1b1c1c]">LKR {total.toLocaleString()}</span>
           </div>
         </div>
 
@@ -276,7 +303,7 @@ function NewOrderModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
           <button type="button" onClick={onClose} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
             Cancel
           </button>
-          <button type="button" onClick={() => onSubmit(partName, supplier, quantity)} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+          <button type="button" onClick={() => onSubmit(details)} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
             Save order
           </button>
         </div>
@@ -301,6 +328,8 @@ function TopNav({
   showNotifications = false,
   onToggleNotifications,
   onMarkNotificationsRead,
+  isNightMode = false,
+  onToggleNightMode,
 }: {
   searchPlaceholder?: string
   value?: string
@@ -315,6 +344,8 @@ function TopNav({
   showNotifications?: boolean
   onToggleNotifications?: () => void
   onMarkNotificationsRead?: () => void
+  isNightMode?: boolean
+  onToggleNightMode?: () => void
 }) {
   const initials = userName
     .split(' ')
@@ -323,24 +354,35 @@ function TopNav({
     .map(part => part[0]?.toUpperCase() ?? '')
     .join('') || 'U'
 
+  const headerClasses = isNightMode
+    ? 'border-[#2a2d35] bg-[#111827] text-white'
+    : 'border-[#e9bcb7] bg-[#fbf9f8] text-[#1b1c1c]'
+  const inputClasses = isNightMode
+    ? 'border-[#374151] bg-[#1f2937] text-white placeholder:text-gray-400'
+    : 'border-[#e9bcb7] bg-[#f5f3f3] text-[#6b7280]'
+  const textMutedClasses = isNightMode ? 'text-gray-300' : 'text-[#5f5e5e]'
+  const panelClasses = isNightMode
+    ? 'border-[#374151] bg-[#111827] text-white'
+    : 'border-[#e9bcb7] bg-white text-[#1b1c1c]'
+
   return (
-    <header className="z-10 flex h-auto flex-shrink-0 flex-col gap-3 border-b border-[#e9bcb7] bg-[#fbf9f8] px-4 py-3 lg:h-12 lg:flex-row lg:items-center lg:justify-between lg:py-0">
+    <header className={`z-10 flex h-auto flex-shrink-0 flex-col gap-3 border-b px-4 py-3 lg:h-12 lg:flex-row lg:items-center lg:justify-between lg:py-0 ${headerClasses}`}>
       <h1 className="text-[18px] font-black tracking-[-0.48px] text-[#bd0014] sm:text-[20px] lg:text-[24px]">Toyota Parts Management</h1>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
         <div className="relative flex items-center w-full lg:w-auto">
-          <span className="absolute left-3 text-[#5f5e5e]"><IconSearch /></span>
+          <span className={`absolute left-3 ${textMutedClasses}`}><IconSearch /></span>
           <input
-            className="h-9 w-full rounded-[2px] border border-[#e9bcb7] bg-[#f5f3f3] pl-8 pr-3 text-[13px] text-[#6b7280] outline-none lg:w-56"
+            className={`h-9 w-full rounded-[2px] border pl-8 pr-3 text-[13px] outline-none lg:w-56 ${inputClasses}`}
             placeholder={searchPlaceholder}
             value={value}
             onChange={event => onChange?.(event.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 text-[#5f5e5e]">
+        <div className={`flex items-center gap-2 ${textMutedClasses}`}>
           <span><IconPin /></span>
           <span className="text-[10px] font-bold tracking-[0.55px] sm:text-[11px]">Warehouse: {warehouseName}</span>
         </div>
-        <div className="relative flex items-center gap-4 text-[#5f5e5e]">
+        <div className={`relative flex items-center gap-4 ${textMutedClasses}`}>
           <button type="button" onClick={onToggleNotifications} className="relative p-1">
             <IconBell />
             {unreadCount > 0 && (
@@ -350,49 +392,56 @@ function TopNav({
             )}
           </button>
           {showNotifications && (
-            <div className="absolute right-0 top-12 z-40 w-[320px] rounded-[12px] border border-[#e9bcb7] bg-white p-3 shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
+            <div className={`absolute right-0 top-12 z-40 w-[320px] rounded-[12px] border p-3 shadow-[0_12px_30px_rgba(0,0,0,0.12)] ${panelClasses}`}>
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-[12px] font-bold uppercase tracking-[0.5px] text-[#1b1c1c]">Notifications</p>
+                <p className={`text-[12px] font-bold uppercase tracking-[0.5px] ${isNightMode ? 'text-white' : 'text-[#1b1c1c]'}`}>Notifications</p>
                 <button type="button" onClick={onMarkNotificationsRead} className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#bd0014]">
                   Mark all read
                 </button>
               </div>
               <div className="space-y-2">
                 {notifications.length === 0 ? (
-                  <p className="rounded-[8px] bg-[#fbf9f8] px-3 py-4 text-[12px] text-[#5f5e5e]">No new notifications.</p>
+                  <p className={`rounded-[8px] px-3 py-4 text-[12px] ${isNightMode ? 'bg-[#1f2937] text-gray-300' : 'bg-[#fbf9f8] text-[#5f5e5e]'}`}>No new notifications.</p>
                 ) : (
                   notifications.map(note => (
-                    <div key={note.id} className={`rounded-[8px] border px-3 py-2 ${note.read ? 'border-[#f0eeee] bg-[#fbf9f8]' : 'border-[#f3d7d3] bg-[#fff7f5]'}`}>
+                    <div key={note.id} className={`rounded-[8px] border px-3 py-2 ${note.read ? isNightMode ? 'border-[#374151] bg-[#1f2937]' : 'border-[#f0eeee] bg-[#fbf9f8]' : isNightMode ? 'border-[#4b2e32] bg-[#2f1d23]' : 'border-[#f3d7d3] bg-[#fff7f5]'}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-[12px] font-bold text-[#1b1c1c]">{note.title}</p>
-                          <p className="mt-1 text-[11px] leading-5 text-[#5f5e5e]">{note.detail}</p>
+                          <p className={`text-[12px] font-bold ${isNightMode ? 'text-white' : 'text-[#1b1c1c]'}`}>{note.title}</p>
+                          <p className={`mt-1 text-[11px] leading-5 ${isNightMode ? 'text-gray-300' : 'text-[#5f5e5e]'}`}>{note.detail}</p>
                         </div>
                         {!note.read && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[#bd0014]" />}
                       </div>
-                      <p className="mt-2 text-[10px] uppercase tracking-[0.45px] text-[#5f5e5e]">{note.time}</p>
+                      <p className={`mt-2 text-[10px] uppercase tracking-[0.45px] ${isNightMode ? 'text-gray-400' : 'text-[#5f5e5e]'}`}>{note.time}</p>
                     </div>
                   ))
                 )}
               </div>
             </div>
           )}
-          <button type="button" onClick={onOpenProfile}><IconGear /></button>
+          <button
+            type="button"
+            onClick={onToggleNightMode}
+            className={`flex items-center gap-2 rounded-[6px] border px-3 py-2 text-[11px] font-bold uppercase tracking-[0.55px] transition ${isNightMode ? 'border-[#374151] bg-[#1f2937] text-white hover:bg-[#243244]' : 'border-[#e9bcb7] bg-white text-[#1b1c1c] hover:border-[#bd0014]'}`}
+          >
+            <span aria-hidden="true">{isNightMode ? '☀' : '☾'}</span>
+            {isNightMode ? 'Day Mode' : 'Night Mode'}
+          </button>
           <button
             type="button"
             onClick={onOpenProfile}
-            className="flex items-center gap-2 rounded-full border border-[#e9bcb7] bg-white px-2 py-1 text-left transition hover:border-[#bd0014]"
+            className={`flex items-center gap-2 rounded-full border px-2 py-1 text-left transition ${isNightMode ? 'border-[#374151] bg-[#1f2937] hover:border-[#bd0014]' : 'border-[#e9bcb7] bg-white hover:border-[#bd0014]'}`}
           >
             {profilePicture ? (
               <img src={profilePicture} alt={userName} className="flex size-8 items-center justify-center overflow-hidden rounded-[12px] object-cover" />
             ) : (
-              <div className="flex size-8 items-center justify-center overflow-hidden rounded-[12px] bg-[#e4e2e2] text-[12px] font-bold text-[#5f5e5e]">
+              <div className={`flex size-8 items-center justify-center overflow-hidden rounded-[12px] text-[12px] font-bold ${isNightMode ? 'bg-[#374151] text-white' : 'bg-[#e4e2e2] text-[#5f5e5e]'}`}>
                 {initials}
               </div>
             )}
             <div className="hidden sm:block">
-              <p className="text-[11px] font-bold text-[#1b1c1c] leading-tight">{userName}</p>
-              <p className="text-[9px] uppercase tracking-[0.5px] text-[#5f5e5e]">{userRole}</p>
+              <p className={`text-[11px] font-bold leading-tight ${isNightMode ? 'text-white' : 'text-[#1b1c1c]'}`}>{userName}</p>
+              <p className={`text-[9px] uppercase tracking-[0.5px] ${isNightMode ? 'text-gray-300' : 'text-[#5f5e5e]'}`}>{userRole}</p>
             </div>
           </button>
         </div>
@@ -449,6 +498,8 @@ function DemandForecastView({
   showNotifications,
   onToggleNotifications,
   onMarkNotificationsRead,
+  isNightMode,
+  onToggleNightMode,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
@@ -464,12 +515,16 @@ function DemandForecastView({
   showNotifications: boolean
   onToggleNotifications: () => void
   onMarkNotificationsRead: () => void
+  isNightMode?: boolean
+  onToggleNightMode?: () => void
 }) {
   const [vehicleFilter, setVehicleFilter] = useState('All Models')
   const [makeYearFilter, setMakeYearFilter] = useState('All Years')
   const [exteriorPartFilter, setExteriorPartFilter] = useState('All Exterior Parts')
   const [monthYearFilter, setMonthYearFilter] = useState('All Months')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [showCurrentStock, setShowCurrentStock] = useState(false)
+  const [currentStockForm, setCurrentStockForm] = useState([{ vehicleModel: '', makeYear: '', partNameNo: '', quantity: '' }])
 
   const vehicleOptions = ['All Models', 'Camry', 'RAV4', 'Corolla', 'Highlander']
   const makeYearOptions = ['All Years', '2023', '2024', '2025']
@@ -493,6 +548,20 @@ function DemandForecastView({
     onClear()
   }
 
+  const handleAddCurrentStock = () => {
+    const validStockRows = currentStockForm.filter(row => row.vehicleModel.trim() && row.makeYear.trim() && row.partNameNo.trim() && Number(row.quantity) > 0)
+
+    if (validStockRows.length !== currentStockForm.length) {
+      onAction('Complete all current stock rows before saving.')
+      return
+    }
+
+    const totalQuantity = validStockRows.reduce((total, row) => total + Number(row.quantity), 0)
+    setCurrentStockForm([{ vehicleModel: '', makeYear: '', partNameNo: '', quantity: '' }])
+    setShowCurrentStock(false)
+    onAction(`${totalQuantity} stock units added to ${warehouseName}.`)
+  }
+
   return (
     <div className="flex flex-1 flex-col">
       <TopNav
@@ -509,6 +578,8 @@ function DemandForecastView({
         showNotifications={showNotifications}
         onToggleNotifications={onToggleNotifications}
         onMarkNotificationsRead={onMarkNotificationsRead}
+        isNightMode={isNightMode}
+        onToggleNightMode={onToggleNightMode}
       />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         {/* Page header */}
@@ -518,9 +589,8 @@ function DemandForecastView({
             <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Analyzing accident frequency data to optimize parts distribution.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => onAction('Demand export started.')} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 9h10v1.5H1V9zm4.25-2.55L3.5 4.75l-1.25 1.25L6 9.75l3.75-3.75L8.5 4.75 6.75 6.45V.75h-1.5v5.7z" fill="currentColor"/></svg>
-              Export Data
+            <button type="button" onClick={() => setShowCurrentStock(true)} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
+              + Add New Stock
             </button>
             <button type="button" onClick={() => onAction('Reorder list generated for high-risk parts.')} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M5 1v4H1l5 6 5-6H7V1H5z" fill="white"/></svg>
@@ -528,6 +598,48 @@ function DemandForecastView({
             </button>
           </div>
         </div>
+
+        {showCurrentStock && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+            <div className="w-full max-w-5xl rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">{warehouseName}</p>
+                  <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Add new stock</h3>
+                </div>
+                <button type="button" onClick={() => setShowCurrentStock(false)} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
+              </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">New stock details</label>
+                  <button type="button" onClick={() => setCurrentStockForm(current => [...current, { vehicleModel: '', makeYear: '', partNameNo: '', quantity: '' }])} className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#bd0014]">+ Add row</button>
+                </div>
+                <div className="overflow-x-auto rounded-[8px] border border-[#e9bcb7]">
+                  <div className="min-w-[760px]">
+                    <div className="grid grid-cols-[1.3fr_0.8fr_1.5fr_0.7fr_auto] gap-3 bg-[#efeded] px-3 py-2 text-[10px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">
+                      <span>Vehicle model</span><span>Make year</span><span>Part name / No</span><span>Quantity</span><span />
+                    </div>
+                    <div className="space-y-2 p-2">
+                      {currentStockForm.map((row, index) => (
+                        <div key={index} className="grid grid-cols-[1.3fr_0.8fr_1.5fr_0.7fr_auto] gap-3">
+                          <input value={row.vehicleModel} onChange={event => setCurrentStockForm(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, vehicleModel: event.target.value } : item))} placeholder="Vehicle model" className="h-10 min-w-0 rounded-[8px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                          <input type="number" value={row.makeYear} onChange={event => setCurrentStockForm(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, makeYear: event.target.value } : item))} placeholder="Year" className="h-10 min-w-0 rounded-[8px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                          <input value={row.partNameNo} onChange={event => setCurrentStockForm(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, partNameNo: event.target.value } : item))} placeholder="Part name / No" className="h-10 min-w-0 rounded-[8px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                          <input type="number" min="1" value={row.quantity} onChange={event => setCurrentStockForm(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item))} placeholder="Qty" className="h-10 min-w-0 rounded-[8px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                          <button type="button" disabled={currentStockForm.length === 1} onClick={() => setCurrentStockForm(current => current.filter((_, itemIndex) => itemIndex !== index))} className="h-10 px-2 text-[20px] leading-none text-[#5f5e5e] disabled:opacity-30">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setShowCurrentStock(false)} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">Cancel</button>
+                <button type="button" onClick={handleAddCurrentStock} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">Add stock</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -659,17 +771,17 @@ function DemandForecastView({
         <div className="flex flex-col gap-4 xl:flex-row">
           {/* Table */}
           <div className="flex-1 overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white">
-            <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full">
-                <thead className="bg-[#efeded]">
+            <div className="max-h-[430px] overflow-x-auto overflow-y-auto">
+              <table className="min-w-[800px] w-full">
+                <thead className="sticky top-0 z-10 bg-[#efeded]">
                   <tr>
-                    {['SPARE PART DETAILS', 'COMPATIBILITY', 'PREDICTED DEMAND', 'CURRENT STOCK', 'STOCK HEALTH', 'DEMAND', 'ACTION'].map(h => (
+                    {['SPARE PART DETAILS', 'COMPATIBILITY', 'PREDICTED DEMAND', 'CURRENT STOCK', 'STOCK HEALTH', 'DEMAND'].map(h => (
                       <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {demandRows.map((row, i) => (
+                  {filteredRows.map((row, i) => (
                     <tr key={i} className="border-b border-[#e9bcb7]">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -684,15 +796,12 @@ function DemandForecastView({
                         <span className="rounded-[2px] bg-[#efeded] px-2 py-1 text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{row.compat}</span>
                       </td>
                       <td className="px-4 py-3 text-[13px] font-medium text-[#1b1c1c]">{row.demand.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-[13px] font-medium" style={{ color: row.stockColor }}>{row.stock.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-[13px] font-medium" style={{ color: isNightMode && row.stockColor === '#1b1c1c' ? '#ffffff' : row.stockColor }}>{row.stock.toLocaleString()}</td>
                       <td className="px-4 py-3"><HealthBar pct={row.health} /></td>
                       <td className="px-4 py-3">
                         <span className="rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase" style={{ color: row.confColor, backgroundColor: row.confBg }}>
                           {row.conf}
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button type="button" onClick={() => onAction(`Opened action menu for ${row.name}.`)} className="text-[#5f5e5e] hover:text-[#1b1c1c]">⋮</button>
                       </td>
                     </tr>
                   ))}
@@ -762,19 +871,19 @@ function DemandForecastView({
 const predRows = [
   {
     id: 'ACC-9482-TX', date: '24 Oct 2024, 08:12', vehicle: 'Camry Hybrid', year: 2024,
-    parts: ['FRONT BUMPER', 'GRILLE ASSY', 'L-HEADLIGHT'], conf: 94, level: 'High', levelColor: '#15803d', dot: '#22c55e',
+    parts: [{ name: 'FRONT BUMPER', level: 'High', levelColor: '#15803d' }, { name: 'GRILLE ASSY', level: 'High', levelColor: '#15803d' }, { name: 'L-HEADLIGHT', level: 'Med', levelColor: '#b45309' }], conf: 94, level: 'High', levelColor: '#15803d', dot: '#22c55e',
   },
   {
     id: 'ACC-8110-CA', date: '23 Oct 2024, 14:45', vehicle: 'RAV4 Prime', year: 2023,
-    parts: ['REAR TAILGATE', 'BUMPER COVER'], conf: 72, level: 'Med', levelColor: '#b45309', dot: '#f59e0b',
+    parts: [{ name: 'REAR TAILGATE', level: 'Med', levelColor: '#b45309' }, { name: 'BUMPER COVER', level: 'Low', levelColor: '#b91c1c' }], conf: 72, level: 'Med', levelColor: '#b45309', dot: '#f59e0b',
   },
   {
     id: 'ACC-7231-NY', date: '22 Oct 2024, 09:30', vehicle: 'Tacoma', year: 2024,
-    parts: ['RADIATOR CORE', 'HOOD PANEL', '+2 MORE'], conf: 45, level: 'Low', levelColor: '#b91c1c', dot: '#ef4444',
+    parts: [{ name: 'RADIATOR CORE', level: 'Low', levelColor: '#b91c1c' }, { name: 'HOOD PANEL', level: 'Low', levelColor: '#b91c1c' }, { name: '+2 MORE', level: 'Low', levelColor: '#b91c1c' }], conf: 45, level: 'Low', levelColor: '#b91c1c', dot: '#ef4444',
   },
   {
     id: 'ACC-5529-IL', date: '21 Oct 2024, 11:10', vehicle: 'Corolla Cross', year: 2023,
-    parts: ['WHEEL ARCH', 'R-FENDER'], conf: 89, level: 'High', levelColor: '#15803d', dot: '#22c55e',
+    parts: [{ name: 'WHEEL ARCH', level: 'High', levelColor: '#15803d' }, { name: 'R-FENDER', level: 'High', levelColor: '#15803d' }], conf: 89, level: 'High', levelColor: '#15803d', dot: '#22c55e',
   },
 ]
 
@@ -792,6 +901,8 @@ function PredictionQueueView({
   showNotifications,
   onToggleNotifications,
   onMarkNotificationsRead,
+  isNightMode,
+  onToggleNightMode,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
@@ -806,26 +917,30 @@ function PredictionQueueView({
   showNotifications: boolean
   onToggleNotifications: () => void
   onMarkNotificationsRead: () => void
+  isNightMode?: boolean
+  onToggleNightMode?: () => void
 }) {
   const [queueRows, setQueueRows] = useState(predRows)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedActions, setSelectedActions] = useState<string[]>([])
   const [confidenceFilter, setConfidenceFilter] = useState('All Scores')
   const [yearFilter, setYearFilter] = useState('All Years')
-  const [regionFilter, setRegionFilter] = useState('Global')
+  const [vehicleFilter, setVehicleFilter] = useState('All Models')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
 
   const confidenceOptions = ['All Scores', 'High (80+%)', 'Medium (50-79%)', 'Low (<50%)']
   const yearOptions = ['All Years', '2023', '2024', '2025']
-  const regionOptions = ['Global', 'North America', 'Europe', 'Asia Pacific', 'Middle East']
+  const vehicleOptions = ['All Models', ...Array.from(new Set(queueRows.map(row => row.vehicle)))]
 
   const filteredRows = queueRows.filter(row => {
-    const matchesSearch = [row.id, row.vehicle, row.parts.join(' '), row.date].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = [row.id, row.vehicle, row.parts.map(part => part.name).join(' '), row.date].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesConfidence = confidenceFilter === 'All Scores' || 
       (confidenceFilter === 'High (80+%)' && row.conf >= 80) ||
       (confidenceFilter === 'Medium (50-79%)' && row.conf >= 50 && row.conf < 80) ||
       (confidenceFilter === 'Low (<50%)' && row.conf < 50)
     const matchesYear = yearFilter === 'All Years' || row.year.toString() === yearFilter
-    return matchesSearch && matchesConfidence && matchesYear
+    const matchesVehicle = vehicleFilter === 'All Models' || row.vehicle === vehicleFilter
+    return matchesSearch && matchesConfidence && matchesYear && matchesVehicle
   })
 
   const toggleSelected = (id: string) => {
@@ -846,26 +961,28 @@ function PredictionQueueView({
     onAction(`Prediction ${id} rejected.`)
   }
 
-  const handleApproveSelected = () => {
-    if (selectedIds.length === 0) {
-      onAction('Select predictions to approve.')
+  const handleSelectedAction = (action: 'approved' | 'rejected') => {
+    if (selectedIds.length === 0 && selectedActions.length === 0) {
+      onAction(`Select predictions or human actions to ${action}.`)
       return
     }
-    setQueueRows(current => current.filter(row => !selectedIds.includes(row.id)))
-    const approved = selectedIds.length
+
+    setQueueRows(current => current.flatMap(row => {
+      if (selectedIds.includes(row.id)) return []
+      const remainingParts = row.parts.filter(part => !selectedActions.includes(`${row.id}-${part.name}`))
+      return remainingParts.length > 0 ? [{ ...row, parts: remainingParts }] : []
+    }))
     setSelectedIds([])
-    onAction(`${approved} prediction${approved > 1 ? 's' : ''} approved.`)
+    setSelectedActions([])
+    onAction(`Selected ${action}.`)
+  }
+
+  const handleApproveSelected = () => {
+    handleSelectedAction('approved')
   }
 
   const handleRejectSelected = () => {
-    if (selectedIds.length === 0) {
-      onAction('Select predictions to reject.')
-      return
-    }
-    setQueueRows(current => current.filter(row => !selectedIds.includes(row.id)))
-    const rejected = selectedIds.length
-    setSelectedIds([])
-    onAction(`${rejected} prediction${rejected > 1 ? 's' : ''} rejected.`)
+    handleSelectedAction('rejected')
   }
 
   return (
@@ -884,13 +1001,15 @@ function PredictionQueueView({
         showNotifications={showNotifications}
         onToggleNotifications={onToggleNotifications}
         onMarkNotificationsRead={onMarkNotificationsRead}
+        isNightMode={isNightMode}
+        onToggleNightMode={onToggleNightMode}
       />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">AI Prediction Review Queue</h2>
-            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Reviewing cluster-based demand spikes for 2024 collision patterns.</p>
+            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Reviewing cluster-based demand spikes for collision patterns.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={handleApproveSelected} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
@@ -942,17 +1061,17 @@ function PredictionQueueView({
             </div>
           </div>
 
-          {/* Region Dropdown */}
+          {/* Vehicle Model Dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#5f5e5e]">Region</span>
+            <span className="text-[13px] text-[#5f5e5e]">Vehicle Model</span>
             <div className="relative">
-              <button type="button" onClick={() => setOpenDropdown(openDropdown === 'region' ? null : 'region')} className="flex h-8 min-w-[110px] items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-[#f5f3f3] px-3 text-[13px] text-[#1b1c1c]">
-                {regionFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
+              <button type="button" onClick={() => setOpenDropdown(openDropdown === 'vehicle' ? null : 'vehicle')} className="flex h-8 min-w-[130px] items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-[#f5f3f3] px-3 text-[13px] text-[#1b1c1c]">
+                {vehicleFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
               </button>
-              {openDropdown === 'region' && (
+              {openDropdown === 'vehicle' && (
                 <div className="absolute top-10 left-0 z-20 min-w-[140px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
-                  {regionOptions.map(opt => (
-                    <button key={opt} type="button" onClick={() => { setRegionFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === regionFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
+                  {vehicleOptions.map(opt => (
+                    <button key={opt} type="button" onClick={() => { setVehicleFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === vehicleFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
                       {opt}
                     </button>
                   ))}
@@ -961,14 +1080,14 @@ function PredictionQueueView({
             </div>
           </div>
 
-          <button type="button" onClick={() => { setConfidenceFilter('All Scores'); setYearFilter('All Years'); setRegionFilter('Global'); onSearchChange(''); }} className="ml-auto text-[13px] font-bold text-[#bd0014]">Clear All Filters</button>
+          <button type="button" onClick={() => { setConfidenceFilter('All Scores'); setYearFilter('All Years'); setVehicleFilter('All Models'); onSearchChange(''); }} className="ml-auto text-[13px] font-bold text-[#bd0014]">Clear All Filters</button>
         </div>
 
         {/* Table */}
         <div className="mb-6 overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white">
-          <div className="overflow-x-auto">
+          <div className="max-h-[430px] overflow-x-auto overflow-y-auto">
             <table className="min-w-[820px] w-full">
-              <thead className="bg-[#efeded]">
+              <thead className="sticky top-0 z-10 bg-[#efeded]">
                 <tr>
                   <th className="w-8 px-4 py-3"><input type="checkbox" checked={selectedIds.length > 0 && selectedIds.length === filteredRows.length} onChange={() => {
                     if (selectedIds.length === filteredRows.length) {
@@ -996,22 +1115,22 @@ function PredictionQueueView({
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {row.parts.map(p => (
-                          <span key={p} className="rounded-[2px] bg-[#efeded] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-[#5f5e5e]">{p}</span>
+                        {row.parts.map(part => (
+                          <span key={part.name} className="rounded-[2px] bg-[#efeded] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-[#5f5e5e]">{part.name}</span>
                         ))}
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="size-2 rounded-full" style={{ backgroundColor: row.dot }} />
-                        <span className="text-[13px] font-bold" style={{ color: row.levelColor }}>{row.conf}% {row.level}</span>
+                      <div className="flex flex-col gap-1">
+                        {row.parts.map(part => <span key={part.name} className="text-[11px] font-bold" style={{ color: part.levelColor }}>{part.level}</span>)}
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <button className="text-lg font-bold text-[#22c55e] hover:opacity-70">✓</button>
-                        <button className="text-lg font-bold text-[#bd0014] hover:opacity-70">✕</button>
-                        <button className="text-base text-[#5f5e5e] hover:opacity-70">✎</button>
+                      <div className="flex flex-col gap-1">
+                        {row.parts.map(part => {
+                          const actionId = `${row.id}-${part.name}`
+                          return <label key={actionId} className="flex h-[22px] items-center"><input aria-label={`Human action for ${part.name}`} type="checkbox" checked={selectedActions.includes(actionId)} onChange={() => setSelectedActions(current => current.includes(actionId) ? current.filter(id => id !== actionId) : [...current, actionId])} className="size-4 accent-[#bd0014]" /></label>
+                        })}
                       </div>
                     </td>
                   </tr>
@@ -1052,16 +1171,16 @@ function PredictionQueueView({
 // ─── Inventory & Fulfillment View ─────────────────────────────────────────────
 
 const workshops = [
-  { org: 'Anods Workshop', name: 'Workshop #012', pending: 24, urgent: '8 CRITICAL', urgentColor: '#bd0014', urgentBg: '#fef2f2', transit: '4 SKUS' },
-  { org: 'Kali Service', name: 'Workshop #045', pending: 11, urgent: '0 ALERT', urgentColor: '#b45309', urgentBg: '#fffbeb', transit: '12 SKUS' },
-  { org: 'Toyota City Hub', name: 'Workshop #008', pending: 56, urgent: '15 CRITICAL', urgentColor: '#bd0014', urgentBg: '#fef2f2', transit: '2 SKUS' },
+  { org: 'Anods Workshop', name: 'Workshop #012', addedDate: '2026-01-12', pending: 24, urgent: '8 CRITICAL', urgentColor: '#bd0014', urgentBg: '#fef2f2', transit: '4 SKUS' },
+  { org: 'Kali Service', name: 'Workshop #045', addedDate: '2026-02-03', pending: 11, urgent: '0 ALERT', urgentColor: '#b45309', urgentBg: '#fffbeb', transit: '12 SKUS' },
+  { org: 'Toyota City Hub', name: 'Workshop #008', addedDate: '2026-02-18', pending: 56, urgent: '15 CRITICAL', urgentColor: '#bd0014', urgentBg: '#fef2f2', transit: '2 SKUS' },
 ]
 
 const fulfillRows = [
-  { name: 'Bumper (Front)', sku: 'TOY-7782-BRK', workshop: 'Workshop #012 – Anods', qty: '04', status: 'BACKORDERED', statusColor: '#b45309', statusBg: '#fffbeb', source: 'Colombo South (92)', action: 'FULFILL NOW', actionStyle: 'red' },
-  { name: 'R Fender', sku: 'PRI-4401-CLT', workshop: 'Workshop #008 – Toyota City Hub', qty: '01', status: 'IN TRANSIT', statusColor: '#15803d', statusBg: '#f0fdf4', source: 'Negombo Main (12)', action: 'TRACK STOCK', actionStyle: 'outline' },
-  { name: 'LED Headlamp Unit (L)', sku: 'LEX-9003-LIT', workshop: 'Workshop #045 – Kali', qty: '02', status: 'ALLOCATED', statusColor: '#1d4ed8', statusBg: '#eff6ff', source: 'Internal Stock (03)', action: 'FULFILL NOW', actionStyle: 'red' },
-  { name: 'L Side Mirror', sku: 'TOY-2211-SUS', workshop: 'Workshop #012 – Anods', qty: '12', status: 'PENDING', statusColor: '#5f5e5e', statusBg: '#efeded', source: 'Transfer: Workshop #008', sourceRed: true, action: 'TRANSFER STOCK', actionStyle: 'blue' },
+  { id: 'fulfill-1', workshop: 'Workshop #012 – Anods', parts: [{ name: 'Bumper (Front)', sku: 'TOY-7782-BRK', qty: 2, unitPrice: 18500 }, { name: 'Front Grille', sku: 'TOY-7782-GRL', qty: 2, unitPrice: 9500 }], status: 'PENDING' },
+  { id: 'fulfill-2', workshop: 'Workshop #008 – Toyota City Hub', parts: [{ name: 'R Fender', sku: 'PRI-4401-CLT', qty: 1, unitPrice: 32000 }], status: 'IN TRANSIT' },
+  { id: 'fulfill-3', workshop: 'Workshop #045 – Kali', parts: [{ name: 'LED Headlamp Unit (L)', sku: 'LEX-9003-LIT', qty: 2, unitPrice: 28500 }], status: 'IN TRANSIT' },
+  { id: 'fulfill-4', workshop: 'Workshop #012 – Anods', parts: [{ name: 'L Side Mirror', sku: 'TOY-2211-SUS', qty: 12, unitPrice: 8500 }], status: 'PENDING' },
 ]
 
 const chartBars = [
@@ -1082,6 +1201,8 @@ function InventoryFulfillmentView({
   showNotifications,
   onToggleNotifications,
   onMarkNotificationsRead,
+  isNightMode,
+  onToggleNightMode,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
@@ -1096,46 +1217,105 @@ function InventoryFulfillmentView({
   showNotifications: boolean
   onToggleNotifications: () => void
   onMarkNotificationsRead: () => void
+  isNightMode?: boolean
+  onToggleNightMode?: () => void
 }) {
   const [statusFilter, setStatusFilter] = useState('All Status')
   const [workshopFilter, setWorkshopFilter] = useState('All Workshops')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showAddWorkshop, setShowAddWorkshop] = useState(false)
+  const [showWorkshopDetails, setShowWorkshopDetails] = useState(false)
   const [workshopCards, setWorkshopCards] = useState(workshops)
-  const [workshopForm, setWorkshopForm] = useState({ org: '', name: '', pending: '0', urgent: '0', transit: '0' })
+  const [workshopForm, setWorkshopForm] = useState({ org: '', name: '', addedDate: new Date().toISOString().slice(0, 10) })
+  const [orderForm, setOrderForm] = useState({
+    workshopName: '',
+    parts: [{ partNameNo: '', vehicleModel: '', makeYear: '', quantity: '', unitPrice: '' }],
+  })
+  const [fulfillmentRows, setFulfillmentRows] = useState(fulfillRows)
+  const [selectedFulfillmentIds, setSelectedFulfillmentIds] = useState<string[]>([])
 
   const handleAddWorkshop = () => {
-    const org = workshopForm.org.trim() || 'New Workshop'
-    const name = workshopForm.name.trim() || `Workshop #${String(workshopCards.length + 1).padStart(3, '0')}`
-    const pendingValue = Number(workshopForm.pending) || 0
-    const urgentValue = Number(workshopForm.urgent) || 0
+    const organizationName = workshopForm.org.trim()
+    const workshopName = workshopForm.name.trim()
+    if (!organizationName || !workshopName) {
+      onAction('Enter an organization name and workshop name.')
+      return
+    }
 
     setWorkshopCards(current => [
       {
-        org,
-        name,
-        pending: pendingValue,
-        urgent: urgentValue > 0 ? `${urgentValue} CRITICAL` : '0 ALERT',
-        urgentColor: urgentValue > 0 ? '#bd0014' : '#b45309',
-        urgentBg: urgentValue > 0 ? '#fef2f2' : '#fffbeb',
-        transit: `${workshopForm.transit || '0'} SKUS`,
+        org: organizationName,
+        name: workshopName,
+        addedDate: workshopForm.addedDate,
+        pending: 0,
+        urgent: '0 ALERT',
+        urgentColor: '#b45309',
+        urgentBg: '#fffbeb',
+        transit: '0 SKUS',
       },
       ...current,
     ])
-    setWorkshopForm({ org: '', name: '', pending: '0', urgent: '0', transit: '0' })
-    setShowAddWorkshop(false)
-    onAction(`Workshop ${name} added successfully.`)
+    setWorkshopForm({ org: '', name: '', addedDate: new Date().toISOString().slice(0, 10) })
+    setShowWorkshopDetails(false)
+    onAction(`${workshopName} added successfully.`)
   }
 
-  const statusOptions = ['All Status', 'PENDING', 'BACKORDERED', 'IN TRANSIT', 'ALLOCATED']
-  const workshopOptions = ['All Workshops', 'Workshop #012', 'Workshop #045', 'Workshop #008']
+  const handleCreateOrder = () => {
+    const workshopName = orderForm.workshopName.trim()
+    const parts = orderForm.parts
+      .filter(part => part.vehicleModel.trim() && part.makeYear.trim())
+      .map((part, index) => ({
+        name: part.partNameNo.trim() || part.vehicleModel.trim(),
+        sku: part.partNameNo.trim() || `MAKE YEAR: ${part.makeYear.trim()}`,
+        makeYear: part.makeYear.trim(),
+        qty: Number(part.quantity) || 0,
+        unitPrice: Number(part.unitPrice) || 0,
+      }))
 
-  const filteredRows = fulfillRows.filter(row => {
-    const matchesSearch = [row.name, row.sku, row.workshop, row.status].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
+    if (!workshopName || parts.length === 0) {
+      onAction('Enter a workshop name and at least one part.')
+      return
+    }
+
+    setFulfillmentRows(rows => [
+      {
+        id: `fulfill-${Date.now()}`,
+        workshop: workshopName,
+        parts,
+        status: 'PENDING',
+      },
+      ...rows,
+    ])
+    setOrderForm({ workshopName: '', parts: [{ partNameNo: '', vehicleModel: '', makeYear: '', quantity: '', unitPrice: '' }] })
+    setShowAddWorkshop(false)
+    onAction(`New order for ${workshopName} added successfully.`)
+  }
+
+  const statusOptions = ['All Status', 'PENDING', 'IN TRANSIT']
+  const workshopOptions = ['All Workshops', ...workshopCards.map(workshop => workshop.name)]
+
+  const filteredRows = fulfillmentRows.filter(row => {
+    const matchesSearch = [row.workshop, row.status, ...row.parts.flatMap(part => [part.name, part.sku])].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'All Status' || row.status === statusFilter
     const matchesWorkshop = workshopFilter === 'All Workshops' || row.workshop.includes(workshopFilter)
     return matchesSearch && matchesStatus && matchesWorkshop
   })
+
+  const fulfillSelectedOrders = () => {
+    if (selectedFulfillmentIds.length === 0) return
+    setFulfillmentRows(rows => rows.filter(row => !selectedFulfillmentIds.includes(row.id)))
+    setSelectedFulfillmentIds([])
+    onAction('Selected fulfillment orders cleared.')
+  }
+
+  const updateFulfillmentStatus = (rowId: string, status: 'PENDING' | 'IN TRANSIT') => {
+    setFulfillmentRows(rows => rows.map(row => row.id === rowId ? { ...row, status } : row))
+  }
+
+  const clearFulfillmentRow = (rowId: string) => {
+    setFulfillmentRows(rows => rows.filter(row => row.id !== rowId))
+    setSelectedFulfillmentIds(current => current.filter(id => id !== rowId))
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -1153,13 +1333,15 @@ function InventoryFulfillmentView({
         showNotifications={showNotifications}
         onToggleNotifications={onToggleNotifications}
         onMarkNotificationsRead={onMarkNotificationsRead}
+        isNightMode={isNightMode}
+        onToggleNightMode={onToggleNightMode}
       />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">Multi-Workshop Fulfillment</h2>
-            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Monitoring real-time stock allocation across Navala workshops.</p>
+            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Monitoring real-time stock allocation across workshops.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {/* Status Dropdown */}
@@ -1194,49 +1376,82 @@ function InventoryFulfillmentView({
               )}
             </div>
 
-            <button type="button" onClick={() => setShowAddWorkshop(true)} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
+            <button type="button" onClick={() => setShowWorkshopDetails(true)} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
               + Add Workshop
             </button>
 
-            <button type="button" onClick={() => onAction('Allocation logic ran successfully.')} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
-              ↺ Run Allocation Logic
+            <button type="button" onClick={() => setShowAddWorkshop(true)} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
+              + New Orders for Workshop
             </button>
           </div>
         </div>
 
-        {showAddWorkshop && (
+        {showWorkshopDetails && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-            <div className="w-full max-w-lg rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+            <div className="w-full max-w-xl rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
               <div className="mb-5 flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">Workshop</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">Workshop directory</p>
                   <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Add workshop details</h3>
+                </div>
+                <button type="button" onClick={() => setShowWorkshopDetails(false)} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Organization name</label>
+                  <input value={workshopForm.org} onChange={event => setWorkshopForm(current => ({ ...current, org: event.target.value }))} placeholder="Enter organization name" className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Workshop name</label>
+                  <input value={workshopForm.name} onChange={event => setWorkshopForm(current => ({ ...current, name: event.target.value }))} placeholder="Enter workshop name" className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Added date</label>
+                  <input value={workshopForm.addedDate} readOnly className="h-11 w-full cursor-not-allowed rounded-[10px] border border-[#e9bcb7] bg-[#efeded] px-3 text-[14px] text-[#5f5e5e] outline-none" />
+                </div>
+              </div>
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button type="button" onClick={() => setShowWorkshopDetails(false)} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">Cancel</button>
+                <button type="button" onClick={handleAddWorkshop} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">Add workshop</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showAddWorkshop && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+            <div className="w-full max-w-5xl rounded-[18px] border border-[#e9bcb7] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">Fulfillment order</p>
+                  <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">New orders for workshop</h3>
                 </div>
                 <button type="button" onClick={() => setShowAddWorkshop(false)} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Workshop organization</label>
-                  <input value={workshopForm.org} onChange={event => setWorkshopForm(current => ({ ...current, org: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Workshop name</label>
+                  <input value={orderForm.workshopName} onChange={event => setOrderForm(current => ({ ...current, workshopName: event.target.value }))} placeholder="Enter workshop name" className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
                 </div>
                 <div>
-                  <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Workshop name</label>
-                  <input value={workshopForm.name} onChange={event => setWorkshopForm(current => ({ ...current, name: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Pending</label>
-                    <input value={workshopForm.pending} onChange={event => setWorkshopForm(current => ({ ...current, pending: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                  <div className="mb-2 flex items-center justify-between">
+                    <label className="block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Part details</label>
+                    <button type="button" onClick={() => setOrderForm(current => ({ ...current, parts: [...current.parts, { partNameNo: '', vehicleModel: '', makeYear: '', quantity: '', unitPrice: '' }] }))} className="text-[11px] font-bold uppercase tracking-[0.5px] text-[#bd0014]">+ Add part</button>
                   </div>
-                  <div>
-                    <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Urgent</label>
-                    <input value={workshopForm.urgent} onChange={event => setWorkshopForm(current => ({ ...current, urgent: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                  <div className="space-y-3">
+                    {orderForm.parts.map((part, index) => (
+                      <div key={index} className="grid gap-3 rounded-[8px] border border-[#e9bcb7] bg-[#fbf9f8] p-3 sm:grid-cols-[minmax(150px,1.4fr)_minmax(140px,1.1fr)_minmax(110px,0.8fr)_minmax(100px,0.7fr)_minmax(150px,1fr)_auto]">
+                        <input value={part.partNameNo} onChange={event => setOrderForm(current => ({ ...current, parts: current.parts.map((item, itemIndex) => itemIndex === index ? { ...item, partNameNo: event.target.value } : item) }))} placeholder="Part name / No" className="h-10 rounded-[8px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                        <input value={part.vehicleModel} onChange={event => setOrderForm(current => ({ ...current, parts: current.parts.map((item, itemIndex) => itemIndex === index ? { ...item, vehicleModel: event.target.value } : item) }))} placeholder="Vehicle model" className="h-10 rounded-[8px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                        <input value={part.makeYear} onChange={event => setOrderForm(current => ({ ...current, parts: current.parts.map((item, itemIndex) => itemIndex === index ? { ...item, makeYear: event.target.value } : item) }))} placeholder="Make year" className="h-10 rounded-[8px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                        <input type="number" min="0" value={part.quantity} onChange={event => setOrderForm(current => ({ ...current, parts: current.parts.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item) }))} placeholder="Quantity" className="h-10 rounded-[8px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                        <input type="number" min="0" value={part.unitPrice} onChange={event => setOrderForm(current => ({ ...current, parts: current.parts.map((item, itemIndex) => itemIndex === index ? { ...item, unitPrice: event.target.value } : item) }))} placeholder="Unit price" className="h-10 rounded-[8px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
+                        <button type="button" disabled={orderForm.parts.length === 1} onClick={() => setOrderForm(current => ({ ...current, parts: current.parts.filter((_, itemIndex) => itemIndex !== index) }))} className="h-10 px-2 text-[20px] leading-none text-[#5f5e5e] disabled:opacity-30">×</button>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <label className="mb-2 block text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Transit</label>
-                    <input value={workshopForm.transit} onChange={event => setWorkshopForm(current => ({ ...current, transit: event.target.value }))} className="h-11 w-full rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[14px] text-[#1b1c1c] outline-none focus:border-[#bd0014]" />
-                  </div>
+                  <p className="mt-3 text-right text-[13px] font-bold text-[#1b1c1c]">Total: LKR {orderForm.parts.reduce((total, part) => total + (Number(part.quantity) || 0) * (Number(part.unitPrice) || 0), 0).toLocaleString()}</p>
                 </div>
               </div>
 
@@ -1244,8 +1459,8 @@ function InventoryFulfillmentView({
                 <button type="button" onClick={() => setShowAddWorkshop(false)} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
                   Cancel
                 </button>
-                <button type="button" onClick={handleAddWorkshop} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
-                  Save workshop
+                <button type="button" onClick={handleCreateOrder} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+                  Create order
                 </button>
               </div>
             </div>
@@ -1253,19 +1468,15 @@ function InventoryFulfillmentView({
         )}
 
         {/* Workshop cards */}
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-6 flex gap-4 overflow-x-auto pb-2">
           {workshopCards.map(w => (
-            <div key={w.name} className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
+            <div key={w.name} className="min-w-[280px] flex-1 rounded-[4px] border border-[#e9bcb7] bg-white p-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">{w.org}</p>
               <p className="mt-1 text-[18px] font-black tracking-[-0.18px] text-[#1b1c1c]">{w.name}</p>
               <div className="mt-3 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] text-[#5f5e5e]">Pending Requests</p>
                   <p className="text-[24px] font-black text-[#1b1c1c]">{w.pending}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] text-[#5f5e5e]">Urgent Needs</p>
-                  <span className="mt-1 inline-block rounded-[2px] px-2 py-0.5 text-[10px] font-bold" style={{ color: w.urgentColor, backgroundColor: w.urgentBg }}>{w.urgent}</span>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2">
@@ -1274,70 +1485,63 @@ function InventoryFulfillmentView({
               </div>
             </div>
           ))}
-          {/* Regional Logistics Hubs */}
-          <div className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Regional Logistics Hubs</p>
-            <div className="mb-3 flex h-24 items-center justify-center rounded-[2px] bg-[#efeded] text-[11px] text-[#5f5e5e]">🗺 Map view</div>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2"><div className="size-2 rounded-full bg-[#bd0014]"/><span className="text-[11px] font-bold text-[#1b1c1c]">NAVALA WAREHOUSE</span></div>
-              <div className="flex items-center gap-2"><div className="size-2 rounded-full bg-[#5f5e5e]"/><span className="text-[11px] text-[#5f5e5e]">4 Active Deliveries</span></div>
-            </div>
-          </div>
         </div>
 
         {/* Active Fulfillment Queue */}
         <div className="mb-6 overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white">
           <div className="flex flex-col gap-2 border-b border-[#e9bcb7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-[13px] font-bold text-[#1b1c1c]">Active Fulfillment Queue</span>
-            <div className="flex flex-wrap items-center gap-4">
-              {[['#22c55e', 'IN TRANSIT'], ['#f59e0b', 'BACKORDERED'], ['#e9e8e7', 'ALLOCATED']].map(([c, l]) => (
-                <div key={l} className="flex items-center gap-1">
-                  <div className="size-3 rounded-sm" style={{ backgroundColor: c as string }} />
-                  <span className="text-[11px] text-[#5f5e5e]">{l}</span>
-                </div>
-              ))}
-            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-[950px] w-full">
-              <thead className="bg-[#efeded]">
+          <div className="max-h-[430px] overflow-x-auto overflow-y-auto">
+            <table className="min-w-[1120px] w-full">
+              <thead className="sticky top-0 z-10 bg-[#efeded]">
                 <tr>
-                  {['PART DETAIL', 'REQUESTING WORKSHOP', 'QTY', 'STATUS', 'SUGGESTED SOURCE', 'PRIORITY ACTIONS'].map(h => (
+                  {['REQUESTING WORKSHOP', 'PART DETAILS', 'QUANTITY', 'UNIT PRICE', 'TOTAL', 'STATUS', 'FULFILL STATUS', ''].map(h => (
                     <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row, i) => (
-                  <tr key={i} className="border-b border-[#e9bcb7]">
-                    <td className="px-4 py-4">
-                      <p className="text-[13px] font-semibold text-[#1b1c1c]">{row.name}</p>
-                      <p className="font-mono text-[11px] text-[#5f5e5e]">SKU: {row.sku}</p>
-                    </td>
+                {filteredRows.map(row => (
+                  <tr key={row.id} className="border-b border-[#e9bcb7]">
                     <td className="px-4 py-4 text-[13px] text-[#5f5e5e]">{row.workshop}</td>
-                    <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">{row.qty}</td>
                     <td className="px-4 py-4">
-                      <span className="rounded-[2px] px-2 py-1 text-[11px] font-bold" style={{ color: row.statusColor, backgroundColor: row.statusBg }}>
-                        {row.status}
-                      </span>
+                      {row.parts.map(part => (
+                        <div key={part.sku} className="mb-1 last:mb-0">
+                          <p className="text-[13px] font-semibold text-[#1b1c1c]">{part.name}</p>
+                          <p className="font-mono text-[11px] text-[#5f5e5e]">SKU: {part.sku}</p>
+                        </div>
+                      ))}
                     </td>
-                    <td className="px-4 py-4">
-                      {row.sourceRed
-                        ? <span className="text-[13px] font-bold text-[#bd0014]">{row.source}</span>
-                        : <span className="text-[13px] text-[#5f5e5e]">{row.source}</span>
-                      }
+                    <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">
+                      {row.parts.map(part => <div key={part.sku} className="mb-1 last:mb-0">{String(part.qty).padStart(2, '0')}</div>)}
                     </td>
+                    <td className="px-4 py-4 text-[13px] text-[#5f5e5e]">
+                      {row.parts.map(part => <div key={part.sku} className="mb-1 last:mb-0">LKR {part.unitPrice.toLocaleString()}</div>)}
+                    </td>
+                    <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">LKR {row.parts.reduce((total, part) => total + part.qty * part.unitPrice, 0).toLocaleString()}</td>
                     <td className="px-4 py-4">
-                      <button
-                        className="rounded-[2px] px-3 py-2 text-[11px] font-bold tracking-[0.55px]"
-                        style={{
-                          backgroundColor: row.actionStyle === 'red' ? '#bd0014' : row.actionStyle === 'blue' ? '#1d4ed8' : 'transparent',
-                          color: row.actionStyle === 'outline' ? '#1b1c1c' : 'white',
-                          border: row.actionStyle === 'outline' ? '1px solid #e9bcb7' : 'none',
-                        }}
+                      <select
+                        aria-label={`Update status for ${row.parts.map(part => part.name).join(', ')}`}
+                        value={row.status}
+                        onChange={event => updateFulfillmentStatus(row.id, event.target.value as 'PENDING' | 'IN TRANSIT')}
+                        className={`rounded-[2px] border-0 px-2 py-1 text-[11px] font-bold outline-none ${row.status === 'IN TRANSIT' ? 'bg-[#f0fdf4] text-[#15803d]' : 'bg-[#fffbeb] text-[#b45309]'}`}
                       >
-                        {row.action}
-                      </button>
+                        <option value="PENDING">PENDING</option>
+                        <option value="IN TRANSIT">IN TRANSIT</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-4">
+                      <input
+                        aria-label={`Fulfill ${row.parts.map(part => part.name).join(', ')}`}
+                        type="checkbox"
+                        checked={selectedFulfillmentIds.includes(row.id)}
+                        onChange={() => setSelectedFulfillmentIds(current => current.includes(row.id) ? current.filter(id => id !== row.id) : [...current, row.id])}
+                        className="size-4 accent-[#bd0014]"
+                      />
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <button type="button" aria-label={`Clear ${row.parts.map(part => part.name).join(', ')}`} onClick={() => clearFulfillmentRow(row.id)} className="flex size-7 items-center justify-center rounded-[2px] text-[18px] leading-none text-[#5f5e5e] hover:bg-[#fef2f2] hover:text-[#bd0014]">×</button>
                     </td>
                   </tr>
                 ))}
@@ -1346,12 +1550,15 @@ function InventoryFulfillmentView({
           </div>
           <div className="flex flex-col gap-2 border-t border-[#e9bcb7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-[13px] text-[#5f5e5e]">Showing {filteredRows.length} of 128 open fulfillment requests</span>
-            <div className="flex items-center gap-1">
-              <span className="text-[13px] text-[#5f5e5e]">Previous</span>
+            <div className="flex items-center gap-3">
+              <button type="button" aria-label="Previous page" className="flex size-8 items-center justify-center rounded-[2px] text-[13px] text-[#5f5e5e] hover:bg-[#efeded]">‹</button>
               {['1', '2', '3'].map((p, i) => (
                 <button key={i} className={`flex size-8 items-center justify-center rounded-[2px] text-[13px] ${p === '1' ? 'bg-[#bd0014] text-white' : 'text-[#5f5e5e] hover:bg-[#efeded]'}`}>{p}</button>
               ))}
-              <span className="text-[13px] text-[#5f5e5e]">Next</span>
+              <button type="button" aria-label="Next page" className="flex size-8 items-center justify-center rounded-[2px] text-[13px] text-[#5f5e5e] hover:bg-[#efeded]">›</button>
+              <button type="button" onClick={fulfillSelectedOrders} disabled={selectedFulfillmentIds.length === 0} className="rounded-[2px] bg-[#bd0014] px-3 py-2 text-[11px] font-bold tracking-[0.55px] text-white disabled:cursor-not-allowed disabled:opacity-40">
+                FULFILL ORDERS
+              </button>
             </div>
           </div>
         </div>
@@ -1400,30 +1607,21 @@ function InventoryFulfillmentView({
 // ─── Purchase Orders View ─────────────────────────────────────────────────────
 
 const poRows = [
-  {
-    supplier: 'Adison Co.', part: '88460-\n47150', desc: 'Bumper\n(Front)',
-    qty: 450, unitPrice: '12,400', total: '5,580,000', conf: '98%', confLevel: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4', icon: '✦',
-  },
-  {
-    supplier: 'Denso Corp.', part: '16400-\n0T040', desc: 'Bonnet',
-    qty: 120, unitPrice: '28,150', total: '3,378,000', conf: '94%', confLevel: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4', icon: '✦',
-  },
-  {
-    supplier: 'Sumitomo\nElectric', part: '82121-\n02E00', desc: 'R Fender',
-    qty: 85, unitPrice: '45,000', total: '3,825,000', conf: '72%', confLevel: 'MED', confColor: '#b45309', confBg: '#fffbeb', icon: '⚠',
-  },
-  {
-    supplier: 'Tokai\nRika', part: '84820-\n02190', desc: 'L Door\n(Rear)',
-    qty: null, unitPrice: '4,200', total: '5,040,000', conf: '91%', confLevel: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4', icon: '✦',
-  },
+  { supplier: 'Adison Co.', vehicle: 'Camry (2024)', part: 'Bumper / 88460-47150', qty: 450, unitPrice: 12400, demand: 'HIGH' },
+  { supplier: 'Denso Corp.', vehicle: 'Corolla (2023)', part: 'Bonnet / 16400-0T040', qty: 120, unitPrice: 28150, demand: 'HIGH' },
+  { supplier: 'Sumitomo Electric', vehicle: 'RAV4 (2024)', part: 'R Fender / 82121-02E00', qty: 85, unitPrice: 45000, demand: 'MEDIUM' },
+  { supplier: 'Tokai Rika', vehicle: 'Tacoma (2023)', part: 'L Door Rear / 84820-02190', qty: 120, unitPrice: 4200, demand: 'HIGH' },
+  { supplier: 'Toyota Parts Co.', vehicle: 'Highlander (2024)', part: 'Headlamp / 81110-0E120', qty: 64, unitPrice: 38500, demand: 'HIGH' },
+  { supplier: 'Aisin Seiki', vehicle: 'Camry (2023)', part: 'Brake Pad / 04465-33480', qty: 210, unitPrice: 7800, demand: 'MEDIUM' },
+  { supplier: 'Koito Manufacturing', vehicle: 'RAV4 (2023)', part: 'Fog Lamp / 81210-0R040', qty: 96, unitPrice: 11200, demand: 'LOW' },
+  { supplier: 'Denso Corp.', vehicle: 'Corolla Cross (2024)', part: 'Radiator / 16400-0V240', qty: 48, unitPrice: 26500, demand: 'MEDIUM' },
 ]
 
 function PurchaseOrdersView({
   searchTerm,
   onSearchChange,
   onAction,
-  aiReviewEnabled,
-  setAiReviewEnabled,
+  addedRows,
   userName,
   userRole,
   warehouseName,
@@ -1434,12 +1632,13 @@ function PurchaseOrdersView({
   showNotifications,
   onToggleNotifications,
   onMarkNotificationsRead,
+  isNightMode,
+  onToggleNightMode,
 }: {
   searchTerm: string
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
-  aiReviewEnabled: boolean
-  setAiReviewEnabled: (value: boolean) => void
+  addedRows: typeof poRows
   userName: string
   userRole: string
   warehouseName: string
@@ -1450,18 +1649,44 @@ function PurchaseOrdersView({
   showNotifications: boolean
   onToggleNotifications: () => void
   onMarkNotificationsRead: () => void
+  isNightMode?: boolean
+  onToggleNightMode?: () => void
 }) {
-  const [rows, setRows] = useState(poRows)
+  const [rows, setRows] = useState([...poRows, ...addedRows])
+  const [shippingCost, setShippingCost] = useState('145000')
+
+  React.useEffect(() => {
+    setRows(current => {
+      const existingKeys = new Set(current.map(row => `${row.supplier}-${row.part}`))
+      const newRows = addedRows.filter(row => !existingKeys.has(`${row.supplier}-${row.part}`))
+      return newRows.length > 0 ? [...current, ...newRows] : current
+    })
+  }, [addedRows])
 
   const filteredRows = rows.filter(row =>
-    [row.supplier, row.part, row.desc, row.conf].join(' ').toLowerCase().includes(searchTerm.toLowerCase()),
+    [row.supplier, row.vehicle, row.part, row.demand].join(' ').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const totalOrderValue = filteredRows.reduce((total, row) => total + row.qty * row.unitPrice, 0)
+  const totalQuantity = filteredRows.reduce((total, row) => total + row.qty, 0)
+  const totalWithShipping = totalOrderValue + (Number(shippingCost) || 0)
+  const budgetProgress = Math.min(100, Math.round((totalWithShipping / 23000000) * 100))
+
+  const finalizeOrder = () => {
+    setRows([])
+    setShippingCost('0')
+    onAction('Purchase order finalized. Table and summary cleared.')
+  }
+
   const updateQty = (index: number, nextValue: string) => {
-    const numeric = nextValue === '' ? null : Number(nextValue)
+    const numeric = nextValue === '' ? 0 : Number(nextValue)
     setRows(current => current.map((row, rowIndex) =>
-      rowIndex === index ? { ...row, qty: Number.isFinite(numeric) ? numeric : null } : row,
+      rowIndex === index ? { ...row, qty: Number.isFinite(numeric) ? numeric : 0 } : row,
     ))
+  }
+
+  const clearRow = (rowToClear: typeof poRows[number]) => {
+    setRows(current => current.filter(row => row !== rowToClear))
   }
 
   return (
@@ -1480,143 +1705,77 @@ function PurchaseOrdersView({
         showNotifications={showNotifications}
         onToggleNotifications={onToggleNotifications}
         onMarkNotificationsRead={onMarkNotificationsRead}
+        isNightMode={isNightMode}
+        onToggleNightMode={onToggleNightMode}
       />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
-        <div className="flex min-h-full flex-col gap-8 xl:flex-row">
+        <div className="flex min-h-full flex-col gap-8">
           {/* Left: table */}
-          <div className="flex flex-1 flex-col gap-6">
+          <div className="flex flex-col gap-6">
             {/* Header */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">Purchase Order Draft</h2>
                 <p className="mt-0.5 text-[13px] text-[#5f5e5e]">PO-2024-0892 • Created from AI Prediction Queue</p>
               </div>
-              <div>
-                <button type="button" onClick={() => setAiReviewEnabled(!aiReviewEnabled)} className="flex items-center gap-3 rounded-[4px] border border-[#e9bcb7] bg-[#f5f3f3] px-4 py-2">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">REVIEW AI RECOMMENDATION</span>
-                  <div className="relative h-6 w-11 flex-shrink-0">
-                    <div className={`h-6 w-11 rounded-full ${aiReviewEnabled ? 'bg-[#bd0014]' : 'bg-[#d4d4d4]'}`} />
-                    <div className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-all ${aiReviewEnabled ? 'right-0.5' : 'left-0.5'}`} />
-                  </div>
-                </button>
-              </div>
             </div>
 
             {/* Table */}
             <div className="overflow-hidden rounded-[2px] border border-[#e9bcb7] bg-white">
-              <div className="overflow-x-auto">
-                <table className="min-w-[900px] w-full">
-                  <thead className="bg-[#efeded]">
+              <div className="max-h-[430px] overflow-x-auto overflow-y-auto">
+                <table className="min-w-[1120px] w-full">
+                  <thead className="sticky top-0 z-10 bg-[#efeded]">
                     <tr>
-                      {[
-                        { label: 'SUPPLIER\nNAME', align: 'left' },
-                        { label: 'PART\nNUMBER', align: 'left' },
-                        { label: 'DESCRIPTION', align: 'left' },
-                        { label: 'REC. QTY', align: 'right' },
-                        { label: 'UNIT\nPRICE\nLKR.', align: 'right' },
-                        { label: 'TOTAL\nLKR.', align: 'right' },
-                        { label: 'DEMAND', align: 'center' },
-                      ].map(h => (
-                        <th key={h.label} className={`border-b border-[#e9bcb7] px-4 py-3 text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e] whitespace-pre-line text-${h.align}`}>
-                          {h.label}
-                        </th>
+                      {['SUPPLIER NAME', 'VEHICLE MODEL / YEAR', 'PART NAME / NO', 'QUANTITY', 'UNIT PRICE', 'TOTAL PRICE', 'DEMAND LEVEL', ''].map(h => (
+                        <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {poRows.map((row, i) => (
-                      <tr key={i} className="border-b border-[#e9bcb7]">
-                        <td className="whitespace-pre-line px-4 py-4 text-[13px] font-medium text-[#1b1c1c]">{row.supplier}</td>
-                        <td className="whitespace-pre-line px-4 py-4 font-mono text-[12px] text-[#1b1c1c]">{row.part}</td>
-                        <td className="whitespace-pre-line px-4 py-4 text-[13px] font-medium text-[#1b1c1c]">{row.desc}</td>
-                        <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="flex h-8 w-20 items-center rounded-[2px] border border-[#e9bcb7] bg-white px-2">
-                              <span className="flex-1 text-right text-[16px] font-medium text-[#1b1c1c]">{row.qty ?? ''}</span>
-                            </div>
-                            <span style={{ color: row.icon === '⚠' ? '#f59e0b' : '#bd0014' }}>{row.icon}</span>
-                          </div>
+                    {filteredRows.map((row, i) => (
+                      <tr key={`${row.supplier}-${row.part}`} className="border-b border-[#e9bcb7]">
+                        <td className="px-4 py-4 text-[13px] font-medium text-[#1b1c1c]">{row.supplier}</td>
+                        <td className="px-4 py-4 text-[13px] text-[#1b1c1c]">{row.vehicle}</td>
+                        <td className="px-4 py-4 font-mono text-[12px] text-[#1b1c1c]">{row.part}</td>
+                        <td className="px-4 py-4 text-[13px] font-medium text-[#1b1c1c]">{row.qty.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-[13px] text-[#1b1c1c]">LKR {row.unitPrice.toLocaleString()}</td>
+                        <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">LKR {(row.qty * row.unitPrice).toLocaleString()}</td>
+                        <td className="px-4 py-4">
+                          <span className={`rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase ${row.demand === 'HIGH' ? 'bg-[#f0fdf4] text-[#15803d]' : row.demand === 'MEDIUM' ? 'bg-[#fffbeb] text-[#b45309]' : 'bg-[#fef2f2] text-[#b91c1c]'}`}>{row.demand}</span>
                         </td>
-                        <td className="px-4 py-4 text-right text-[13px] font-medium text-[#1b1c1c]">{row.unitPrice}</td>
-                        <td className="px-4 py-4 text-right text-[13px] font-bold text-[#1b1c1c]">{row.total}</td>
                         <td className="px-4 py-4 text-center">
-                          <span className="rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase" style={{ color: row.confColor, backgroundColor: row.confBg }}>
-                            {row.conf} {row.confLevel}
-                          </span>
+                          <button type="button" aria-label={`Clear ${row.part}`} onClick={() => clearRow(row)} className="flex size-7 items-center justify-center rounded-[2px] text-[18px] leading-none text-[#5f5e5e] hover:bg-[#fef2f2] hover:text-[#bd0014]">×</button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <div className="flex items-center justify-end border-t border-[#e9bcb7] px-6 py-4">
+                <span className="mr-4 text-[13px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Total of all parts</span>
+                <span className="text-[20px] font-black text-[#1b1c1c]">LKR {totalOrderValue.toLocaleString()}</span>
+              </div>
             </div>
           </div>
 
-          {/* Right: Summary card */}
-          <div className="w-full xl:w-[280px] xl:flex-shrink-0">
-            <div className="overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white">
-              <div className="border-b border-[#e9bcb7] px-6 py-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">ORDER SUMMARY</p>
-              </div>
-
-              <div className="flex flex-col gap-4 px-6 pt-3">
-                {[
-                  ['Total SKU Count', '4 Unique Parts'],
-                  ['Total Quantity', '1,855 Units'],
-                  ['Est. Shipping', 'LKR.145,000'],
-                ].map(([l, v]) => (
-                  <div key={l} className="flex items-center justify-between">
-                    <span className="text-[13px] text-[#5f5e5e]">{l}</span>
-                    <span className="text-[13px] font-bold text-[#1b1c1c]">{v}</span>
-                  </div>
-                ))}
-
-                <div className="flex items-end justify-between border-t border-[#e9bcb7] pt-4">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase leading-tight tracking-[0.55px] text-[#bd0014]">TOTAL ORDER</p>
-                    <p className="text-[11px] font-bold uppercase leading-tight tracking-[0.55px] text-[#bd0014]">VALUE</p>
-                  </div>
-                  <span className="text-[20px] font-semibold tracking-[-0.48px] text-[#1b1c1c]">LKR.17,968,000</span>
-                </div>
-              </div>
-
-              <div className="mt-2 flex flex-col gap-2 border-t border-[#e9bcb7] px-6 py-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">MONTHLY BUDGET PROGRESS</span>
-                  <span className="text-[11px] font-bold text-[#1b1c1c]">78%</span>
-                </div>
-                <div className="h-[6px] overflow-hidden rounded-full bg-[#e9e8e7]">
-                  <div className="h-full rounded-full bg-[#f59e0b]" style={{ width: '78%' }} />
-                </div>
-                <p className="text-[11px] text-[#5f5e5e]">¥5.2M remaining in Q3 Logistics Budget</p>
-              </div>
-
-              <div className="mx-6 mb-4 rounded-[2px] border border-[#e9bcb7] bg-[#efeded] p-4">
-                <div className="mb-1 flex items-center gap-3">
-                  <span className="text-[#bd0014]"><IconClock /></span>
-                  <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">ESTIMATED ARRIVAL</span>
-                </div>
-                <p className="mt-2 text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">Sept 24 – 28</p>
-                <p className="text-[13px] text-[#5f5e5e]">Standard Freight via Ocean</p>
-              </div>
-
-              <div className="flex flex-col gap-2 px-6 pb-6">
-                <button
-                  type="button"
-                  onClick={() => onAction('Purchase order finalized and sent to 4 suppliers.')}
-                  className="flex h-14 w-full flex-col items-center justify-center rounded-[4px] bg-[#bd0014]"
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-white">FINALIZE AND SEND PO</span>
-                  <span className="mt-0.5 text-[10px] uppercase text-white opacity-80">TO 4 SELECTED SUPPLIERS</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onAction('Purchase order saved as draft.')}
-                  className="flex h-11 w-full items-center justify-center rounded-[2px] border border-[#e9bcb7]"
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">SAVE AS DRAFT</span>
-                </button>
-              </div>
+          {/* Order summary */}
+          <div className="overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white">
+            <div className="border-b border-[#e9bcb7] px-6 py-4">
+              <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">ORDER SUMMARY</p>
+            </div>
+            <div className="grid gap-5 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
+              <div><p className="text-[13px] text-[#5f5e5e]">Total spare parts</p><p className="mt-1 text-[22px] font-black text-[#1b1c1c]">{filteredRows.length}</p></div>
+              <div><p className="text-[13px] text-[#5f5e5e]">Total quantity</p><p className="mt-1 text-[22px] font-black text-[#1b1c1c]">{totalQuantity.toLocaleString()} units</p></div>
+              <label><span className="text-[13px] text-[#5f5e5e]">Shipping cost</span><div className="mt-1 flex h-10 items-center rounded-[4px] border border-[#e9bcb7] bg-[#f8f4f3] px-3"><span className="text-[13px] text-[#5f5e5e]">LKR</span><input type="number" min="0" value={shippingCost} onChange={event => setShippingCost(event.target.value)} className="min-w-0 flex-1 bg-transparent px-2 text-[15px] font-bold text-[#1b1c1c] outline-none" /></div></label>
+              <div><p className="text-[13px] text-[#5f5e5e]">Total order value</p><p className="mt-1 text-[22px] font-black text-[#bd0014]">LKR {totalWithShipping.toLocaleString()}</p></div>
+            </div>
+            <div className="border-t border-[#e9bcb7] px-6 py-5">
+              <div className="mb-2 flex items-center justify-between"><span className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">MONTHLY BUDGET PROGRESS</span><span className="text-[11px] font-bold text-[#1b1c1c]">{budgetProgress}%</span></div>
+              <div className="h-[6px] overflow-hidden rounded-full bg-[#e9e8e7]"><div className="h-full rounded-full bg-[#f59e0b]" style={{ width: `${budgetProgress}%` }} /></div>
+            </div>
+            <div className="flex flex-col gap-2 border-t border-[#e9bcb7] px-6 py-5 sm:flex-row sm:justify-end">
+              <button type="button" onClick={finalizeOrder} className="flex h-11 items-center justify-center rounded-[4px] bg-[#bd0014] px-6 text-[11px] font-bold uppercase tracking-[0.55px] text-white">Finalize the order</button>
+              <button type="button" onClick={() => onAction('Purchase order saved as draft.')} className="flex h-11 items-center justify-center rounded-[4px] border border-[#e9bcb7] px-6 text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">Save as draft</button>
             </div>
           </div>
         </div>
@@ -1667,7 +1826,7 @@ function LoginPage({
       <div className="grid w-full max-w-5xl overflow-hidden rounded-[18px] border border-[#e9bcb7] bg-white shadow-[0_30px_80px_rgba(189,0,20,0.08)] lg:grid-cols-[1.1fr_1fr]">
         <div className="relative overflow-hidden bg-[#bd0014] p-8 text-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.15),_transparent_44%)]" />
-          <div className="relative z-10 flex h-full flex-col">
+          <div className="relative z-10 flex h-full flex-col items-center justify-center text-center">
             <div className="mb-10 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-[10px] bg-white/12">
                 <span className="text-[26px]"><IconBike /></span>
@@ -1684,19 +1843,6 @@ function LoginPage({
               <p className="mt-4 text-[15px] leading-6 text-white/80">
                 Monitor demand, stock risk, fulfillment priorities, and supplier planning in one secure platform.
               </p>
-            </div>
-
-            <div className="mt-auto grid gap-4 pt-8 sm:grid-cols-3">
-              {[
-                { label: 'Orders', value: '1,284' },
-                { label: 'Fulfillment', value: '94.2%' },
-                { label: 'Alerts', value: '42' },
-              ].map(item => (
-                <div key={item.label} className="rounded-[12px] border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
-                  <p className="text-[11px] uppercase tracking-[1.2px] text-white/70">{item.label}</p>
-                  <p className="mt-2 text-[24px] font-black tracking-[-0.5px]">{item.value}</p>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -1895,15 +2041,43 @@ function UserProfileEditor({
   onClose,
   onSave,
   onPhotoUpload,
+  onDeleteAccount,
+  showDeleteConfirm,
+  onConfirmDelete,
+  onCancelDelete,
 }: {
   profile: UserProfile
   onChange: (field: keyof UserProfile, value: string | boolean) => void
   onClose: () => void
   onSave: () => void
   onPhotoUpload: (value: string) => void
+  onDeleteAccount: () => void
+  showDeleteConfirm: boolean
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-md rounded-[16px] border border-[#e9bcb7] bg-white p-5 shadow-[0_20px_50px_rgba(0,0,0,0.2)]">
+            <p className="text-[11px] font-bold uppercase tracking-[1px] text-[#bd0014]">Delete account</p>
+            <h4 className="mt-2 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Delete your data?</h4>
+            <p className="mt-3 text-[14px] leading-relaxed text-[#5f5e5e]">
+              Your user data will be deleted permanently. This action cannot be undone.
+            </p>
+            <div className="mt-5 flex justify-end gap-3">
+              <button type="button" onClick={onCancelDelete} className="rounded-[8px] border border-[#e9bcb7] bg-white px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">
+                No
+              </button>
+              <button type="button" onClick={onConfirmDelete} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-2xl rounded-[18px] border border-[#e9bcb7] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
         <div className="flex items-center justify-between border-b border-[#e9bcb7] px-6 py-4">
           <div>
@@ -1944,15 +2118,6 @@ function UserProfileEditor({
                 }}
               />
             </label>
-            <div className="w-full">
-              <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Accent color</label>
-              <input
-                type="color"
-                value={profile.accent}
-                onChange={event => onChange('accent', event.target.value)}
-                className="h-10 w-full cursor-pointer rounded-[8px] border border-[#e9bcb7] bg-white p-1"
-              />
-            </div>
           </div>
 
           <div className="space-y-4">
@@ -2007,15 +2172,15 @@ function UserProfileEditor({
             <div className="rounded-[10px] border border-[#e9bcb7] bg-[#f8f4f3] p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Account status</p>
-                  <p className="mt-1 text-[13px] text-[#1b1c1c]">{profile.isAccountActive ? 'Active account' : 'Deactivated account'}</p>
+                  <p className="text-[12px] font-bold uppercase tracking-[0.5px] text-[#5f5e5e]">Account actions</p>
+                  <p className="mt-1 text-[13px] text-[#1b1c1c]">Remove your account and all saved data.</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => onChange('isAccountActive', !profile.isAccountActive)}
-                  className={`relative h-6 w-11 rounded-full transition ${profile.isAccountActive ? 'bg-[#bd0014]' : 'bg-[#d4d4d4]'}`}
+                  onClick={onDeleteAccount}
+                  className="rounded-[8px] border border-[#bd0014] bg-[#fff5f5] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.55px] text-[#bd0014]"
                 >
-                  <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${profile.isAccountActive ? 'right-1' : 'left-1'}`} />
+                  Delete account
                 </button>
               </div>
             </div>
@@ -2041,6 +2206,7 @@ export default function App() {
   const [isRegistering, setIsRegistering] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false)
+  const [addedPurchaseRows, setAddedPurchaseRows] = useState<typeof poRows>([])
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -2051,7 +2217,6 @@ export default function App() {
   const [view, setView] = useState<View>('demand')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusMessage, setStatusMessage] = useState('System ready')
-  const [aiReviewEnabled, setAiReviewEnabled] = useState(true)
   const [registeredAccounts, setRegisteredAccounts] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem('toyota-accounts')
@@ -2082,6 +2247,8 @@ export default function App() {
   ])
   const [showNotifications, setShowNotifications] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isNightMode, setIsNightMode] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     if (activeUserEmail && profilesByEmail[activeUserEmail]) {
       return profilesByEmail[activeUserEmail]
@@ -2134,6 +2301,35 @@ export default function App() {
       },
       ...current,
     ].slice(0, 5))
+  }
+
+  const handleDeleteAccount = () => {
+    if (!activeUserEmail) return
+    setShowDeleteConfirm(true)
+  }
+
+  const handleConfirmDeleteAccount = () => {
+    if (!activeUserEmail) {
+      setShowDeleteConfirm(false)
+      return
+    }
+
+    const emailToDelete = activeUserEmail.toLowerCase()
+
+    setRegisteredAccounts(current => current.filter(account => account.email.toLowerCase() !== emailToDelete))
+    setProfilesByEmail(current => {
+      const next = { ...current }
+      delete next[emailToDelete]
+      return next
+    })
+    setActiveUserEmail('')
+    setUserProfile(buildDefaultProfile('Nuwan Perera', 'nuwan@toyota.com'))
+    setShowDeleteConfirm(false)
+    setIsProfileOpen(false)
+    setIsLoggedIn(false)
+    setShowLanding(true)
+    setStatusMessage('Account deleted permanently.')
+    setError('')
   }
 
   const handleNavigate = (nextView: View) => {
@@ -2254,12 +2450,26 @@ export default function App() {
     setIsSupportOpen(false)
   }
 
-  const handleNewOrderSave = (partName: string, supplier: string, quantity: string) => {
-    const cleanPartName = partName.trim() || 'New part'
-    const cleanSupplier = supplier.trim() || 'Preferred supplier'
-    const cleanQuantity = quantity.trim() || '0'
+  const handleNewOrderSave = (details: NewOrderDetail[]) => {
+    const completedDetails = details.filter(detail => detail.supplier.trim() && detail.vehicle.trim() && detail.part.trim() && Number(detail.quantity) > 0 && Number(detail.unitPrice) >= 0)
+    if (completedDetails.length !== details.length) {
+      setStatusMessage('Complete every new order detail row before saving.')
+      return
+    }
 
-    setStatusMessage(`New order created for ${cleanPartName} from ${cleanSupplier} (${cleanQuantity} units).`)
+    const total = completedDetails.reduce((sum, detail) => sum + Number(detail.quantity) * Number(detail.unitPrice), 0)
+    setAddedPurchaseRows(current => [
+      ...current,
+      ...completedDetails.map(detail => ({
+        supplier: detail.supplier.trim(),
+        vehicle: detail.vehicle.trim(),
+        part: detail.part.trim(),
+        qty: Number(detail.quantity),
+        unitPrice: Number(detail.unitPrice),
+        demand: 'MEDIUM',
+      })),
+    ])
+    setStatusMessage(`${completedDetails.length} purchase order detail${completedDetails.length > 1 ? 's' : ''} created. Total: LKR ${total.toLocaleString()}.`)
     setIsNewOrderOpen(false)
     setView('purchase')
   }
@@ -2293,15 +2503,15 @@ export default function App() {
 
   return (
     <div
-      className="flex min-h-screen w-full flex-col overflow-x-hidden bg-[#fbf9f8] lg:h-screen lg:flex-row"
+      className={`dashboard-shell flex min-h-screen w-full flex-col overflow-x-hidden lg:h-screen lg:flex-row ${isNightMode ? 'night-mode bg-[#0b1220]' : 'bg-[#fbf9f8]'}`}
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
     >
-      <Sidebar active={view} onNavigate={handleNavigate} onSignOut={handleSignOut} onOpenSupport={() => setIsSupportOpen(true)} onOpenNewOrder={() => setIsNewOrderOpen(true)} />
+      <Sidebar active={view} onNavigate={handleNavigate} onSignOut={handleSignOut} onOpenSupport={() => setIsSupportOpen(true)} onOpenNewOrder={() => setIsNewOrderOpen(true)} isNightMode={isNightMode} />
       {isSupportOpen && <SupportModal onClose={() => setIsSupportOpen(false)} onSubmit={handleSupportRequest} />}
       {isNewOrderOpen && <NewOrderModal onClose={() => setIsNewOrderOpen(false)} onSubmit={handleNewOrderSave} />}
-      <div className="min-w-0 flex-1 overflow-y-auto">
+      <div className={`min-w-0 flex-1 overflow-y-auto ${isNightMode ? 'bg-[#0b1220]' : 'bg-[#fbf9f8]'}`}>
         {statusMessage && (
-          <div className="border-b border-[#e9bcb7] bg-[#fff7f5] px-4 py-2 text-[12px] font-medium text-[#bd0014]">
+          <div className={`border-b px-4 py-2 text-[12px] font-medium ${isNightMode ? 'border-[#374151] bg-[#111827] text-[#fca5a5]' : 'border-[#e9bcb7] bg-[#fff7f5] text-[#bd0014]'}`}>
             {statusMessage}
           </div>
         )}
@@ -2319,6 +2529,8 @@ export default function App() {
             notifications={notifications}
             unreadCount={notifications.filter(item => !item.read).length}
             showNotifications={showNotifications}
+            isNightMode={isNightMode}
+            onToggleNightMode={() => setIsNightMode(value => !value)}
             onToggleNotifications={() => {
               setShowNotifications(value => !value)
               if (!showNotifications) markNotificationsRead()
@@ -2339,6 +2551,8 @@ export default function App() {
             notifications={notifications}
             unreadCount={notifications.filter(item => !item.read).length}
             showNotifications={showNotifications}
+            isNightMode={isNightMode}
+            onToggleNightMode={() => setIsNightMode(value => !value)}
             onToggleNotifications={() => {
               setShowNotifications(value => !value)
               if (!showNotifications) markNotificationsRead()
@@ -2359,6 +2573,8 @@ export default function App() {
             notifications={notifications}
             unreadCount={notifications.filter(item => !item.read).length}
             showNotifications={showNotifications}
+            isNightMode={isNightMode}
+            onToggleNightMode={() => setIsNightMode(value => !value)}
             onToggleNotifications={() => {
               setShowNotifications(value => !value)
               if (!showNotifications) markNotificationsRead()
@@ -2371,8 +2587,7 @@ export default function App() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onAction={setStatusMessage}
-            aiReviewEnabled={aiReviewEnabled}
-            setAiReviewEnabled={setAiReviewEnabled}
+            addedRows={addedPurchaseRows}
             userName={userProfile.fullName}
             userRole={userProfile.role}
             warehouseName={userProfile.warehouse}
@@ -2381,6 +2596,8 @@ export default function App() {
             notifications={notifications}
             unreadCount={notifications.filter(item => !item.read).length}
             showNotifications={showNotifications}
+            isNightMode={isNightMode}
+            onToggleNightMode={() => setIsNightMode(value => !value)}
             onToggleNotifications={() => {
               setShowNotifications(value => !value)
               if (!showNotifications) markNotificationsRead()
@@ -2394,9 +2611,16 @@ export default function App() {
         <UserProfileEditor
           profile={userProfile}
           onChange={handleProfileChange}
-          onClose={() => setIsProfileOpen(false)}
+          onClose={() => {
+            setIsProfileOpen(false)
+            setShowDeleteConfirm(false)
+          }}
           onSave={handleSaveProfile}
           onPhotoUpload={value => setUserProfile(current => ({ ...current, profilePicture: value }))}
+          onDeleteAccount={handleDeleteAccount}
+          showDeleteConfirm={showDeleteConfirm}
+          onConfirmDelete={handleConfirmDeleteAccount}
+          onCancelDelete={() => setShowDeleteConfirm(false)}
         />
       )}
     </div>

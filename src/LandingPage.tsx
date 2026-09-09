@@ -17,14 +17,6 @@ function Logo({ size = 36 }: { size?: number }) {
   )
 }
 
-function SearchIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 13.5 13.5" fill="none">
-      <path d={svgPaths.p2500af80} fill="currentColor" />
-    </svg>
-  )
-}
-
 function ShieldIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -33,17 +25,6 @@ function ShieldIcon() {
     </svg>
   )
 }
-
-// ── Live Feed ────────────────────────────────────────────────────────────────
-
-const liveItems = [
-  { dot: '#22c55e', text: '1,240 units reclassified as Optimal in Navala Central', time: '1 min ago' },
-  { dot: '#f59e0b', text: 'Outer Mirror Glass stock health dropped to 14% at Navala Central', time: '4 min ago' },
-  { dot: '#22c55e', text: 'Stock transfer started: L Side Mirror → Workshop #008', time: '7 min ago' },
-  { dot: '#22c55e', text: 'ACC 5529 IL prediction approved — Corolla Cross, Wheel Arch', time: '10 min ago' },
-  { dot: '#22c55e', text: '2 units of LED Headlamp Unit (L) allocated to Workshop #045', time: '13 min ago' },
-  { dot: '#bd0014', text: 'Workshop #012 – Anods flagged 8 critical stockouts', time: '16 min ago' },
-]
 
 // ── Steps ────────────────────────────────────────────────────────────────────
 
@@ -64,13 +45,6 @@ const steps = [
     num: '04', tag: 'PURCHASE ORDERS', title: 'Send it to suppliers',
     body: 'Confirmed shortfalls become a purchase order draft — priced, dated, and ready to send to your suppliers in one click.',
   },
-]
-
-const networkStats = [
-  { label: 'Total Predicted Demand', value: '12,482', sub: '↑ +14.2% vs prev 30d', subColor: '#22c55e' },
-  { label: 'Fulfillment Rate', value: '94.8%', sub: 'Above network target', subColor: '#22c55e' },
-  { label: 'Avg. Prediction Confidence', value: '78.4%', sub: 'Stable accuracy margin', subColor: '#22c55e' },
-  { label: 'Human Approval Rate', value: '91%', sub: 'High AI performance', subColor: '#22c55e' },
 ]
 
 const trustCards = [
@@ -150,9 +124,6 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="text-white/60 hover:text-white transition-colors">
-              <SearchIcon />
-            </button>
             <button
               onClick={onEnter}
               className="bg-white text-[#0c0c0c] font-bold text-[12px] tracking-[0.5px] px-5 h-9 rounded-[4px] hover:bg-white/90 transition-colors"
@@ -173,7 +144,7 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
               AI-POWERED TOYOTA PARTS INTELLIGENCE
             </h1>
             <p className="text-white/60 text-[15px] leading-[1.7] mb-10 max-w-[440px]">
-              Built for Navala's Toyota-affiliated workshop network. Island Supply Chain reads real accident and collision data across every connected workshop, forecasts which parts will be needed next, and routes it into inventory and purchase orders — before a single shelf runs empty. Every prediction is scored, queued, and reviewed by a person before it becomes a real order, so nothing ships blind.
+              Precision logistics engineered for automotive supply networks. Island Supply Chain translates real-world accident and collision analytics into predictive demand forecasts, dynamic multi-warehouse fulfillment, and automated purchase orders—ensuring critical components are queued and stocked before inventory is depleted. Every prediction is human-verified to maintain total decision integrity.
             </p>
             <button
               onClick={onEnter}
@@ -182,35 +153,6 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
               Sign In to Dashboard
               <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M9 1l4 4-4 4M1 5h12" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── LIVE ACTIVITY ────────────────────────────────────────────────── */}
-      <section className="px-8 py-20 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <SectionLabel text="LIVE ON THE NETWORK" />
-          <h2 className="text-[#1b1c1c] font-black text-[36px] leading-[1.1] tracking-[-0.8px] mb-3">
-            The platform never stops working.
-          </h2>
-          <p className="text-[#5f5e5e] text-[15px] leading-relaxed mb-10 max-w-[520px]">
-            Every prediction, allocation, and purchase order below is happening across a real workshop network right now.
-          </p>
-
-          {/* Activity card */}
-          <div className="border border-[#e9bcb7] rounded-[8px] overflow-hidden bg-white shadow-sm">
-            {liveItems.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between px-6 py-4 border-b border-[#f0eeee] last:border-b-0 hover:bg-[#fbf9f8] transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="size-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.dot }} />
-                  <span className="text-[#1b1c1c] text-[14px]">{item.text}</span>
-                </div>
-                <span className="text-[#9ca3af] text-[12px] font-medium flex-shrink-0 ml-8">{item.time}</span>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -239,16 +181,6 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
             ))}
           </div>
 
-          {/* 4 stat cards */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {networkStats.map(stat => (
-              <div key={stat.label} className="bg-white border border-[#e9bcb7] rounded-[6px] p-5">
-                <p className="text-[#5f5e5e] text-[12px] mb-3">{stat.label}</p>
-                <p className="text-[#1b1c1c] font-black text-[32px] leading-none tracking-[-1px]">{stat.value}</p>
-                <p className="text-[12px] font-semibold mt-2" style={{ color: stat.subColor }}>{stat.sub}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

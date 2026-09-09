@@ -19,6 +19,56 @@ body {
   box-sizing: border-box;
 }
 
+/* The dashboard uses exported utility classes in many views. Keep their light
+   tokens readable and consistent when the shared shell enters night mode. */
+.night-mode {
+  color-scheme: dark;
+}
+
+.night-mode [class~="bg-white"] {
+  background-color: #111827 !important;
+}
+
+.night-mode [class~="bg-[#fbf9f8]"] {
+  background-color: #0b1220 !important;
+}
+
+.night-mode [class~="bg-[#f8f4f3]"],
+.night-mode [class~="bg-[#f5f3f3]"],
+.night-mode [class~="bg-[#efeded]"],
+.night-mode [class~="bg-[#e9e8e7]"] {
+  background-color: #1f2937 !important;
+}
+
+.night-mode [class~="bg-[#fff7f5]"] {
+  background-color: #2f1d23 !important;
+}
+
+.night-mode [class~="text-[#1b1c1c]"] {
+  color: #f8fafc !important;
+}
+
+.night-mode [class~="text-[#5f5e5e]"] {
+  color: #cbd5e1 !important;
+}
+
+.night-mode [class~="border-[#e9bcb7]"],
+.night-mode [class~="border-[#f0eeee]"],
+.night-mode [class~="border-[#f3d7d3]"] {
+  border-color: #374151 !important;
+}
+
+.night-mode [class~="hover:bg-[#efeded]"]:hover,
+.night-mode [class~="hover:bg-[#f5f3f3]"]:hover {
+  background-color: #374151 !important;
+}
+
+.night-mode input,
+.night-mode textarea,
+.night-mode select {
+  color-scheme: dark;
+}
+
 button,
 [type='button'],
 [type='submit'] {
