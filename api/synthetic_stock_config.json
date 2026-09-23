@@ -1,0 +1,32 @@
+{
+  "config_version": 1,
+  "generation_id": "toyota-demo-stock-v1",
+  "scope_file": "api/synthetic_stock_scope.json",
+  "path_base": "project_root",
+  "seed": 42,
+  "quantity_algorithm": "sha256_identity_modulo_v1",
+  "sku_prefix": "SYN-",
+  "display_name_prefix": "[SYNTHETIC] ",
+  "existing_generation_policy": "skip_if_identical_else_conflict",
+  "existing_stock_policy": "reject_unowned_balance",
+  "scenarios": {
+    "fully_stocked": {
+      "min_quantity": 8,
+      "max_quantity": 12,
+      "reorder_level": 4
+    },
+    "low_stock": {
+      "min_quantity": 1,
+      "max_quantity": 2,
+      "reorder_level": 3
+    },
+    "stockout": {
+      "min_quantity": 0,
+      "max_quantity": 0,
+      "reorder_level": 2
+    }
+  },
+  "demo_order_quantity_per_part": 2,
+  "copy_claims": false,
+  "auto_approve_claims": false
+}

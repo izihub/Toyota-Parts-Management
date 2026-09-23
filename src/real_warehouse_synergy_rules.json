@@ -1,0 +1,373 @@
+[
+  {
+    "antecedent": "LH FOG LAMP",
+    "consequent": "RH FOG LAMP",
+    "support": 0.0385,
+    "confidence": 0.6129,
+    "lift": 7.21
+  },
+  {
+    "antecedent": "RH FOG LAMP",
+    "consequent": "LH FOG LAMP",
+    "support": 0.0385,
+    "confidence": 0.4524,
+    "lift": 7.21
+  },
+  {
+    "antecedent": "LH FOG LAMP",
+    "consequent": "LH HEAD LAMP",
+    "support": 0.0364,
+    "confidence": 0.5806,
+    "lift": 7.0
+  },
+  {
+    "antecedent": "LH HEAD LAMP",
+    "consequent": "LH FOG LAMP",
+    "support": 0.0364,
+    "confidence": 0.439,
+    "lift": 7.0
+  },
+  {
+    "antecedent": "LH HEAD LAMP",
+    "consequent": "SHELL",
+    "support": 0.0506,
+    "confidence": 0.6098,
+    "lift": 6.69
+  },
+  {
+    "antecedent": "SHELL",
+    "consequent": "LH HEAD LAMP",
+    "support": 0.0506,
+    "confidence": 0.5556,
+    "lift": 6.69
+  },
+  {
+    "antecedent": "RH FOG LAMP",
+    "consequent": "RH HEAD LAMP",
+    "support": 0.0547,
+    "confidence": 0.6429,
+    "lift": 6.62
+  },
+  {
+    "antecedent": "RH HEAD LAMP",
+    "consequent": "RH FOG LAMP",
+    "support": 0.0547,
+    "confidence": 0.5625,
+    "lift": 6.62
+  },
+  {
+    "antecedent": "LH FOG LAMP",
+    "consequent": "SHELL",
+    "support": 0.0344,
+    "confidence": 0.5484,
+    "lift": 6.02
+  },
+  {
+    "antecedent": "LH SIDE MIRROR",
+    "consequent": "LH FRONT DOOR",
+    "support": 0.0344,
+    "confidence": 0.6538,
+    "lift": 5.57
+  },
+  {
+    "antecedent": "LH HEAD LAMP",
+    "consequent": "RH HEAD LAMP",
+    "support": 0.0445,
+    "confidence": 0.5366,
+    "lift": 5.52
+  },
+  {
+    "antecedent": "RH HEAD LAMP",
+    "consequent": "LH HEAD LAMP",
+    "support": 0.0445,
+    "confidence": 0.4583,
+    "lift": 5.52
+  },
+  {
+    "antecedent": "SHELL",
+    "consequent": "RH HEAD LAMP",
+    "support": 0.0486,
+    "confidence": 0.5333,
+    "lift": 5.49
+  },
+  {
+    "antecedent": "RH FOG LAMP",
+    "consequent": "SHELL",
+    "support": 0.0425,
+    "confidence": 0.5,
+    "lift": 5.49
+  },
+  {
+    "antecedent": "RH HEAD LAMP",
+    "consequent": "SHELL",
+    "support": 0.0486,
+    "confidence": 0.5,
+    "lift": 5.49
+  },
+  {
+    "antecedent": "SHELL",
+    "consequent": "RH FOG LAMP",
+    "support": 0.0425,
+    "confidence": 0.4667,
+    "lift": 5.49
+  },
+  {
+    "antecedent": "RH FENDER",
+    "consequent": "RH REAR DOOR",
+    "support": 0.0162,
+    "confidence": 0.4444,
+    "lift": 5.36
+  },
+  {
+    "antecedent": "LH REAR FENDER",
+    "consequent": "LH REAR DOOR",
+    "support": 0.0304,
+    "confidence": 0.5357,
+    "lift": 5.29
+  },
+  {
+    "antecedent": "LH REAR FENDER",
+    "consequent": "TAIL DOOR",
+    "support": 0.0243,
+    "confidence": 0.4286,
+    "lift": 4.7
+  },
+  {
+    "antecedent": "LH TAIL LAMP",
+    "consequent": "RH TAIL LAMP",
+    "support": 0.0202,
+    "confidence": 0.4,
+    "lift": 4.6
+  },
+  {
+    "antecedent": "LH SIDE MIRROR",
+    "consequent": "LH REAR DOOR",
+    "support": 0.0223,
+    "confidence": 0.4231,
+    "lift": 4.18
+  },
+  {
+    "antecedent": "RH SIDE MIRROR",
+    "consequent": "RH FRONT DOOR",
+    "support": 0.0425,
+    "confidence": 0.5833,
+    "lift": 4.0
+  },
+  {
+    "antecedent": "LH TAIL LAMP",
+    "consequent": "DICKY DOOR",
+    "support": 0.0223,
+    "confidence": 0.44,
+    "lift": 3.88
+  },
+  {
+    "antecedent": "RH REAR DOOR",
+    "consequent": "LH FRONT DOOR",
+    "support": 0.0364,
+    "confidence": 0.439,
+    "lift": 3.74
+  },
+  {
+    "antecedent": "RH TAIL LAMP",
+    "consequent": "DICKY DOOR",
+    "support": 0.0364,
+    "confidence": 0.4186,
+    "lift": 3.69
+  },
+  {
+    "antecedent": "TAIL DOOR",
+    "consequent": "REAR BUMPER",
+    "support": 0.0911,
+    "confidence": 1.0,
+    "lift": 3.5
+  },
+  {
+    "antecedent": "RH FENDER",
+    "consequent": "RH FRONT DOOR",
+    "support": 0.0182,
+    "confidence": 0.5,
+    "lift": 3.43
+  },
+  {
+    "antecedent": "DICKY DOOR",
+    "consequent": "REAR BUMPER",
+    "support": 0.0951,
+    "confidence": 0.8393,
+    "lift": 2.94
+  },
+  {
+    "antecedent": "RH TAIL LAMP",
+    "consequent": "REAR BUMPER",
+    "support": 0.0729,
+    "confidence": 0.8372,
+    "lift": 2.93
+  },
+  {
+    "antecedent": "RH REAR DOOR",
+    "consequent": "RH FRONT DOOR",
+    "support": 0.0344,
+    "confidence": 0.4146,
+    "lift": 2.84
+  },
+  {
+    "antecedent": "LH TAIL LAMP",
+    "consequent": "REAR BUMPER",
+    "support": 0.0405,
+    "confidence": 0.8,
+    "lift": 2.8
+  },
+  {
+    "antecedent": "GRILL",
+    "consequent": "BONNET",
+    "support": 0.1457,
+    "confidence": 0.7742,
+    "lift": 2.48
+  },
+  {
+    "antecedent": "BONNET",
+    "consequent": "GRILL",
+    "support": 0.1457,
+    "confidence": 0.4675,
+    "lift": 2.48
+  },
+  {
+    "antecedent": "RH FRONT DOOR",
+    "consequent": "LH FRONT FENDER",
+    "support": 0.0587,
+    "confidence": 0.4028,
+    "lift": 2.31
+  },
+  {
+    "antecedent": "LH FOG LAMP",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0628,
+    "confidence": 1.0,
+    "lift": 2.29
+  },
+  {
+    "antecedent": "RH FOG LAMP",
+    "consequent": "FRONT BUMPER",
+    "support": 0.085,
+    "confidence": 1.0,
+    "lift": 2.29
+  },
+  {
+    "antecedent": "FRONT WINDSCREEN",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0263,
+    "confidence": 1.0,
+    "lift": 2.29
+  },
+  {
+    "antecedent": "RH REAR FENDER",
+    "consequent": "REAR BUMPER",
+    "support": 0.0283,
+    "confidence": 0.6364,
+    "lift": 2.23
+  },
+  {
+    "antecedent": "RH HEAD LAMP",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0891,
+    "confidence": 0.9167,
+    "lift": 2.1
+  },
+  {
+    "antecedent": "SHELL",
+    "consequent": "FRONT BUMPER",
+    "support": 0.083,
+    "confidence": 0.9111,
+    "lift": 2.08
+  },
+  {
+    "antecedent": "FRONT WINDSCREEN",
+    "consequent": "BONNET",
+    "support": 0.0162,
+    "confidence": 0.6154,
+    "lift": 1.97
+  },
+  {
+    "antecedent": "BODY KIT",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0223,
+    "confidence": 0.8462,
+    "lift": 1.94
+  },
+  {
+    "antecedent": "LH HEAD LAMP",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0688,
+    "confidence": 0.8293,
+    "lift": 1.9
+  },
+  {
+    "antecedent": "GRILL",
+    "consequent": "FRONT BUMPER",
+    "support": 0.1457,
+    "confidence": 0.7742,
+    "lift": 1.77
+  },
+  {
+    "antecedent": "BONNET",
+    "consequent": "FRONT BUMPER",
+    "support": 0.2409,
+    "confidence": 0.7727,
+    "lift": 1.77
+  },
+  {
+    "antecedent": "FRONT BUMPER",
+    "consequent": "BONNET",
+    "support": 0.2409,
+    "confidence": 0.5509,
+    "lift": 1.77
+  },
+  {
+    "antecedent": "RH FENDER",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0263,
+    "confidence": 0.7222,
+    "lift": 1.65
+  },
+  {
+    "antecedent": "LH REAR FENDER",
+    "consequent": "REAR BUMPER",
+    "support": 0.0243,
+    "confidence": 0.4286,
+    "lift": 1.5
+  },
+  {
+    "antecedent": "RH SIDE MIRROR",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0466,
+    "confidence": 0.6389,
+    "lift": 1.46
+  },
+  {
+    "antecedent": "LH FRONT FENDER",
+    "consequent": "BONNET",
+    "support": 0.0769,
+    "confidence": 0.4419,
+    "lift": 1.42
+  },
+  {
+    "antecedent": "LH HEAD LAMP",
+    "consequent": "BONNET",
+    "support": 0.0364,
+    "confidence": 0.439,
+    "lift": 1.41
+  },
+  {
+    "antecedent": "RH HEAD LAMP",
+    "consequent": "BONNET",
+    "support": 0.0425,
+    "confidence": 0.4375,
+    "lift": 1.4
+  },
+  {
+    "antecedent": "LH FRONT FENDER",
+    "consequent": "FRONT BUMPER",
+    "support": 0.0931,
+    "confidence": 0.5349,
+    "lift": 1.22
+  }
+]

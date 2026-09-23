@@ -36,6 +36,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: parseInt(process.env.PORT || '8443'),
     strictPort: true,
+    proxy: { '/api': { target: process.env.API_URL || 'http://127.0.0.1:8000', changeOrigin: true } },
     hmr: isFigmaSandbox ? { clientPort: 443 } : undefined,
     watch: { ignored: ['**/.figma/**'] },
   },

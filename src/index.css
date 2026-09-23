@@ -52,6 +52,27 @@ body {
   color: #cbd5e1 !important;
 }
 
+.night-mode section {
+  color: #f8fafc;
+}
+
+.night-mode section table {
+  color: #f8fafc;
+}
+
+.night-mode section th,
+.night-mode section td {
+  border-color: #374151;
+}
+
+.night-mode [class~="text-red-700"] {
+  color: #fca5a5 !important;
+}
+
+.night-mode [class~="text-green-700"] {
+  color: #86efac !important;
+}
+
 .night-mode [class~="border-[#e9bcb7]"],
 .night-mode [class~="border-[#f0eeee]"],
 .night-mode [class~="border-[#f3d7d3]"] {

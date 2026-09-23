@@ -9,3 +9,8 @@ vite.config.*.timestamp-*
 *-debug.log*
 .claude-replay.*
 .tmp-*
+api/*.db
+imports/claims-*.json
+imports/claims-*.log
+api/backups/
+imports/synthetic-stock-*.json

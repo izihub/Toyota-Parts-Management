@@ -1,9 +1,32 @@
+import DatabaseBanner from './DatabaseBanner'
+import ApprovedPredictions from './ApprovedPredictions'
+import OperationalMetrics from './OperationalMetrics'
+import FulfillmentActionsModal from './FulfillmentActionsModal'
+import InventoryOperations from './InventoryOperations'
 import React, { useState } from 'react'
 import svgPaths from '../imports/svg-7e3q15howf'
 import LandingPage from './LandingPage'
+import ReorderBundleModal from './ReorderBundleModal'
+import CatalogManager from './CatalogManager'
+import ClaimConversionModal from './ClaimConversionModal'
+import { catalogRequest, type CatalogItem } from './catalog'
+import { draftError, type DraftLine } from './purchase'
+import { averageScore, scoreLevel, readPendingIntake, type PendingIntake, type Claim, type ModelMetadata, type IntakeResponse } from './prediction'
 
 
 type View = 'demand' | 'prediction' | 'inventory' | 'purchase'
+
+async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 30000)
+  try {
+    const response = await fetch(path, { ...options, signal: controller.signal })
+    if (!response.ok) throw new Error(`API request failed (${response.status})`)
+    return await response.json() as T
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
 
 // ─── Shared Icons ────────────────────────────────────────────────────────────
 
@@ -49,24 +72,10 @@ function IconBell() {
     </svg>
   )
 }
-function IconGear() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20.1 20" fill="none">
-      <path d={svgPaths.p3cdadd00} fill="currentColor" />
-    </svg>
-  )
-}
 function IconPin() {
   return (
     <svg width="13" height="17" viewBox="0 0 13.3333 16.6667" fill="none">
       <path d={svgPaths.p2f7922c0} fill="currentColor" />
-    </svg>
-  )
-}
-function IconClock() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d={svgPaths.p256e1340} fill="currentColor" />
     </svg>
   )
 }
@@ -88,13 +97,6 @@ function IconSignOut() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
       <path d={svgPaths.p1b102380} fill="currentColor" />
-    </svg>
-  )
-}
-function IconStar() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 12.8333 12.8333" fill="none">
-      <path d={svgPaths.p6da9c80} fill="currentColor" />
     </svg>
   )
 }
@@ -304,7 +306,7 @@ function NewOrderModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
             Cancel
           </button>
           <button type="button" onClick={() => onSubmit(details)} className="rounded-[8px] bg-[#bd0014] px-4 py-2 text-[12px] font-bold uppercase tracking-[0.55px] text-white">
-            Save order
+            Add to draft
           </button>
         </div>
       </div>
@@ -452,35 +454,14 @@ function TopNav({
 
 // ─── Demand Forecast View ─────────────────────────────────────────────────────
 
-const demandRows = [
-  {
-    img: '🔦', name: 'LED Headlight Assembly (R)', pn: 'PN-81110-33C10',
-    compat: 'CAMRY 2024', vehicleModel: 'Camry', makeYear: 2024, exteriorPart: 'Headlight', monthYear: 'Oct 2024', demand: 842, stock: 210, stockColor: '#bd0014', health: 25, conf: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4',
-  },
-  {
-    img: '💡', name: 'LED Fog lamp (R)', pn: 'PN-43512-42119',
-    compat: 'RAV4 2023+', vehicleModel: 'RAV4', makeYear: 2023, exteriorPart: 'Fog Lamp', monthYear: 'Nov 2024', demand: 1240, stock: 1180, stockColor: '#1b1c1c', health: 95, conf: 'HIGH', confColor: '#15803d', confBg: '#f0fdf4',
-  },
-  {
-    img: '🚗', name: 'Front Bumper Reinforcement', pn: 'PN-52131-02830',
-    compat: 'COROLLA HB', vehicleModel: 'Corolla', makeYear: 2024, exteriorPart: 'Bumper', monthYear: 'Sep 2024', demand: 450, stock: 320, stockColor: '#1b1c1c', health: 71, conf: 'MED', confColor: '#b45309', confBg: '#fffbeb',
-  },
-  {
-    img: '🪟', name: 'Outer Mirror Glass (Heated)', pn: 'PN-87931-48C60',
-    compat: 'HIGHLANDER', vehicleModel: 'Highlander', makeYear: 2024, exteriorPart: 'Mirror Glass', monthYear: 'Dec 2024', demand: 312, stock: 45, stockColor: '#bd0014', health: 14, conf: 'LOW', confColor: '#b91c1c', confBg: '#fef2f2',
-  },
-]
-
-function HealthBar({ pct }: { pct: number }) {
-  const barColor = pct > 70 ? '#22c55e' : pct > 40 ? '#f59e0b' : '#ef4444'
-  return (
-    <div className="flex items-center gap-2">
-      <div className="bg-[#e9e8e7] h-[6px] rounded-full overflow-hidden" style={{ width: 80 }}>
-        <div style={{ width: `${pct}%`, backgroundColor: barColor, height: '100%', borderRadius: 9999 }} />
-      </div>
-      <span className="text-[11px] text-[#5f5e5e]">{pct}%</span>
-    </div>
-  )
+type StockRow = {
+  img: string
+  name: string
+  pn: string
+  compat: string
+  stock: number
+  demand: number
+  stockColor: string
 }
 
 function DemandForecastView({
@@ -488,6 +469,7 @@ function DemandForecastView({
   onSearchChange,
   onAction,
   onClear,
+  onAddBundle,
   userName,
   userRole,
   warehouseName,
@@ -505,6 +487,7 @@ function DemandForecastView({
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
   onClear: () => void
+  onAddBundle: (lines: DraftLine[]) => void
   userName: string
   userRole: string
   warehouseName: string
@@ -520,35 +503,51 @@ function DemandForecastView({
 }) {
   const [vehicleFilter, setVehicleFilter] = useState('All Models')
   const [makeYearFilter, setMakeYearFilter] = useState('All Years')
-  const [exteriorPartFilter, setExteriorPartFilter] = useState('All Exterior Parts')
-  const [monthYearFilter, setMonthYearFilter] = useState('All Months')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showCurrentStock, setShowCurrentStock] = useState(false)
+  const [showReorderBundle, setShowReorderBundle] = useState(false)
   const [currentStockForm, setCurrentStockForm] = useState([{ vehicleModel: '', makeYear: '', partNameNo: '', quantity: '' }])
+  const [stockRows, setStockRows] = useState<Array<StockRow & {fitments: Array<{model: string; make_year: number}>; reserved: number | null; available: number | null; warehouse: string}>>([])
+  const [demandMetrics, setDemandMetrics] = useState<{ delivery_rate: number | null } | null>(null)
+  const loadStock = () => apiRequest<Array<{part_name: string; part_number: string | null; quantity: number; reorder_level: number; fitments: Array<{model: string; make_year: number}>; identity_status: string; reserved_quantity?: number; available_quantity?: number; warehouse_name: string; synthetic?: boolean}>>('/api/stock')
+    .then(items => setStockRows(items.map(item => ({
+      reserved: item.reserved_quantity ?? null, available: item.available_quantity ?? null, warehouse: item.warehouse_name,
+      fitments: item.fitments, img: '📦', name: `${item.synthetic ? '[SYNTHETIC] ' : ''}${item.part_name}`, pn: item.part_number || '—', compat: item.fitments.length ? item.fitments.map(f => `${f.model} (${f.make_year})`).join(', ') : 'Legacy - fitment not mapped',
+      vehicleModel: item.fitments[0]?.model || 'Unmapped', makeYear: item.fitments[0]?.make_year || 0, exteriorPart: 'Other',
+      monthYear: new Date().toLocaleString('en', { month: 'short', year: 'numeric' }),
+      demand: item.reorder_level, stock: item.quantity,
+      stockColor: item.quantity <= item.reorder_level ? '#bd0014' : '#1b1c1c',
+      health: item.reorder_level ? Math.min(100, Math.round(item.quantity / item.reorder_level * 100)) : 100,
+      conf: 'LIVE', confColor: '#15803d', confBg: '#f0fdf4',
+    }))))
+    .catch(error => onAction(`Could not load stock: ${String(error)}`))
+  const loadDemandMetrics = () => apiRequest<{ delivery_rate: number | null }>('/api/metrics')
+    .then(data => setDemandMetrics(data))
+    .catch(error => onAction(`Could not load demand metrics: ${String(error)}`))
+  React.useEffect(() => { void loadStock(); void loadDemandMetrics() }, [])
 
-  const vehicleOptions = ['All Models', 'Camry', 'RAV4', 'Corolla', 'Highlander']
-  const makeYearOptions = ['All Years', '2023', '2024', '2025']
-  const exteriorPartOptions = ['All Exterior Parts', 'Headlight', 'Fog Lamp', 'Bumper', 'Mirror Glass']
-  const monthOptions = ['All Months', 'Sep 2024', 'Oct 2024', 'Nov 2024', 'Dec 2024']
+  const lowStockAlerts = stockRows.filter(row => row.stock <= row.demand).length
+  const criticalStockouts = stockRows.filter(row => row.stock <= 0).length
+  const fulfillmentRate = demandMetrics?.delivery_rate ?? null
+  const fulfillmentPercent = fulfillmentRate == null ? 0 : Math.min(100, Math.max(0, fulfillmentRate))
 
-  const filteredRows = demandRows.filter(row => {
+  const vehicleOptions = ['All Models', ...new Set(stockRows.flatMap(row => row.fitments.map(f => f.model)))]
+  const makeYearOptions = ['All Years', ...new Set(stockRows.flatMap(row => row.fitments.map(f => String(f.make_year))))]
+
+  const filteredRows = stockRows.filter(row => {
     const matchesSearch = [row.name, row.pn, row.compat].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesVehicle = vehicleFilter === 'All Models' || row.vehicleModel === vehicleFilter
-    const matchesYear = makeYearFilter === 'All Years' || String(row.makeYear) === makeYearFilter
-    const matchesPart = exteriorPartFilter === 'All Exterior Parts' || row.exteriorPart === exteriorPartFilter
-    const matchesMonth = monthYearFilter === 'All Months' || row.monthYear === monthYearFilter
-    return matchesSearch && matchesVehicle && matchesYear && matchesPart && matchesMonth
+    const matchesVehicle = vehicleFilter === 'All Models' || row.fitments.some(f => f.model === vehicleFilter)
+    const matchesYear = makeYearFilter === 'All Years' || row.fitments.some(f => String(f.make_year) === makeYearFilter && (vehicleFilter === 'All Models' || f.model === vehicleFilter))
+    return matchesSearch && matchesVehicle && matchesYear
   })
 
   const handleClearAll = () => {
     setVehicleFilter('All Models')
     setMakeYearFilter('All Years')
-    setExteriorPartFilter('All Exterior Parts')
-    setMonthYearFilter('All Months')
     onClear()
   }
 
-  const handleAddCurrentStock = () => {
+  const handleAddCurrentStock = async () => {
     const validStockRows = currentStockForm.filter(row => row.vehicleModel.trim() && row.makeYear.trim() && row.partNameNo.trim() && Number(row.quantity) > 0)
 
     if (validStockRows.length !== currentStockForm.length) {
@@ -556,10 +555,14 @@ function DemandForecastView({
       return
     }
 
-    const totalQuantity = validStockRows.reduce((total, row) => total + Number(row.quantity), 0)
-    setCurrentStockForm([{ vehicleModel: '', makeYear: '', partNameNo: '', quantity: '' }])
-    setShowCurrentStock(false)
-    onAction(`${totalQuantity} stock units added to ${warehouseName}.`)
+    try {
+      await apiRequest('/api/stock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(validStockRows.map(row => ({ vehicle_model: row.vehicleModel, make_year: Number(row.makeYear), part_name: row.partNameNo, quantity: Number(row.quantity), warehouse_name: warehouseName }))) })
+      const totalQuantity = validStockRows.reduce((total, row) => total + Number(row.quantity), 0)
+      setCurrentStockForm([{ vehicleModel: '', makeYear: '', partNameNo: '', quantity: '' }])
+      setShowCurrentStock(false)
+      void loadStock()
+      onAction(`${totalQuantity} stock units saved to ${warehouseName}.`)
+    } catch (error) { onAction(`Could not save stock: ${String(error)}`) }
   }
 
   return (
@@ -585,14 +588,14 @@ function DemandForecastView({
         {/* Page header */}
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h2 className="text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">Demand &amp; Inventory Forecast</h2>
-            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Analyzing accident frequency data to optimize parts distribution.</p>
+            <h2 className="text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">Demand Review &amp; Inventory</h2>
+            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Reviewing saved predictions and current warehouse stock.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => setShowCurrentStock(true)} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
-              + Add New Stock
+              + Add Legacy Stock
             </button>
-            <button type="button" onClick={() => onAction('Reorder list generated for high-risk parts.')} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
+            <button type="button" onClick={() => setShowReorderBundle(true)} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M5 1v4H1l5 6 5-6H7V1H5z" fill="white"/></svg>
               Generate Reorder List
             </button>
@@ -605,7 +608,7 @@ function DemandForecastView({
               <div className="mb-5 flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[1.2px] text-[#bd0014]">{warehouseName}</p>
-                  <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Add new stock</h3>
+                  <h3 className="mt-1 text-[24px] font-black tracking-[-0.5px] text-[#1b1c1c]">Add legacy stock</h3>
                 </div>
                 <button type="button" onClick={() => setShowCurrentStock(false)} className="text-[24px] leading-none text-[#5f5e5e]">×</button>
               </div>
@@ -640,59 +643,55 @@ function DemandForecastView({
             </div>
           </div>
         )}
+        {showReorderBundle && <ReorderBundleModal onAddBundle={onAddBundle} onClose={() => setShowReorderBundle(false)} />}
 
-        {/* Stat cards */}
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {/* Total Predicted Demand */}
-          <div className="relative overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white p-4">
-            <div className="mb-3 flex items-start justify-between">
-              <span className="text-[13px] font-medium text-[#5f5e5e]">Total Predicted Demand</span>
-              <div className="text-[#bd0014]">
-                <svg width="18" height="18" viewBox="0 0 20 12" fill="none"><path d={svgPaths.p33125000} fill="#bd0014"/></svg>
-              </div>
-            </div>
-            <p className="text-[28px] font-black leading-none text-[#1b1c1c] sm:text-[32px]">12,482</p>
-            <p className="mt-1 text-[11px] text-[#5f5e5e]">units</p>
-            <p className="mt-2 text-[11px] font-bold text-[#15803d]">↑ +14.2% vs prev 30d</p>
-          </div>
+        <CatalogManager onUpdated={() => void loadStock()} />
 
-          {/* Low Stock Alerts */}
+        <div className="mb-4 grid gap-4 md:grid-cols-2">
           <div className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
-            <div className="mb-3 flex items-start justify-between">
-              <span className="text-[13px] font-medium text-[#5f5e5e]">Low Stock Alerts</span>
-              <svg width="18" height="16" viewBox="0 0 12.8333 11.0833" fill="none"><path d={svgPaths.p2e0ed180} fill="#f59e0b"/></svg>
-            </div>
-            <p className="text-[28px] font-black leading-none text-[#1b1c1c] sm:text-[32px]">42</p>
-            <p className="mt-1 text-[11px] text-[#5f5e5e]">SKUs</p>
-
-            <p className="text-[#bd0014] font-bold text-[11px] mt-2">⚠ 8 CRITICAL STOCKOUTS</p>
-          </div>
-
-          {/* Pending AI Predictions */}
-          <div className="bg-white border border-[#e9bcb7] rounded-[4px] p-4">
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-[#5f5e5e] text-[13px] font-medium">Pending AI Predictions</span>
-              <span className="text-[#5f5e5e]"><IconStar /></span>
-            </div>
-            <p className="text-[#1b1c1c] font-black text-[32px] leading-none">1,894</p>
-            <p className="text-[#5f5e5e] text-[11px] mt-3">Awaiting human verification</p>
-          </div>
-
-          {/* Fulfillment Rate */}
-          <div className="bg-white border border-[#e9bcb7] rounded-[4px] p-4">
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-[#5f5e5e] text-[13px] font-medium">Fulfillment Rate</span>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="9" stroke="#22c55e" strokeWidth="2" fill="none"/>
-                <path d="M6 10l3 3 5-5" stroke="#22c55e" strokeWidth="1.5" fill="none"/>
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Low Stock Alerts</p>
+              <svg width="22" height="19" viewBox="0 0 22 19" fill="none" aria-hidden="true">
+                <path d="M11 0L21.5 18H0.5L11 0Z" fill="#BA1A1A" />
               </svg>
             </div>
-            <p className="text-[#1b1c1c] font-black text-[32px] leading-none">94.8%</p>
-            <div className="mt-3 bg-[#e9e8e7] h-[6px] rounded-full overflow-hidden">
-              <div className="bg-[#22c55e] h-full rounded-full" style={{ width: '94.8%' }} />
+
+            <div className="mt-4 flex items-end gap-2">
+              <span className="text-[32px] font-semibold leading-[32px] tracking-[-0.48px] text-[#1b1c1c]">
+                {lowStockAlerts.toLocaleString()}
+              </span>
+              <span className="pb-1 text-[13px] text-[#5f5e5e]">SKUs</span>
+            </div>
+
+            <div className="mt-3 flex items-center gap-2 text-[13px] font-medium text-[#ba1a1a]">
+              <span className="inline-block size-2.5 rounded-full bg-[#ba1a1a]" />
+              {criticalStockouts.toLocaleString()} CRITICAL STOCKOUTS
+            </div>
+          </div>
+
+          <div className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Fulfillment Rate</p>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[#1b1c1c]" aria-hidden="true">
+                <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM8.5 14.5L4.5 10.5L5.7 9.3L8.5 12.1L14.3 6.3L15.5 7.5L8.5 14.5Z" fill="currentColor" />
+              </svg>
+            </div>
+
+            <div className="mt-4 text-[32px] font-semibold leading-[32px] tracking-[-0.48px] text-[#1b1c1c]">
+              {fulfillmentRate == null ? '—' : `${fulfillmentRate.toFixed(1)}%`}
+            </div>
+
+            <div className="mt-4 h-[6px] w-full overflow-hidden rounded-full bg-[#efeded]">
+              <div
+                className="h-full rounded-full bg-[#10b981]"
+                style={{ width: `${fulfillmentPercent}%` }}
+              />
             </div>
           </div>
         </div>
+
+        <OperationalMetrics />
+        <ApprovedPredictions />
 
         {/* Filters */}
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[4px] border border-[#e9bcb7] bg-white p-3">
@@ -733,36 +732,7 @@ function DemandForecastView({
             )}
           </div>
 
-          {/* Exterior Part Dropdown */}
-          <div className="relative">
-            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'part' ? null : 'part')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
-              Exterior Part: {exteriorPartFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
-            </button>
-            {openDropdown === 'part' && (
-              <div className="absolute top-10 left-0 z-20 min-w-[170px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
-                {exteriorPartOptions.map(opt => (
-                  <button key={opt} type="button" onClick={() => { setExteriorPartFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === exteriorPartFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          <div className="relative">
-            <button type="button" onClick={() => setOpenDropdown(openDropdown === 'month' ? null : 'month')} className="flex h-8 items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-white px-3 text-[13px] text-[#1b1c1c]">
-              Month & Year: {monthYearFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
-            </button>
-            {openDropdown === 'month' && (
-              <div className="absolute top-10 left-0 z-20 min-w-[160px] rounded-[4px] border border-[#e9bcb7] bg-white shadow-lg">
-                {monthOptions.map(opt => (
-                  <button key={opt} type="button" onClick={() => { setMonthYearFilter(opt); setOpenDropdown(null); }} className={`block w-full px-3 py-2 text-left text-[13px] hover:bg-[#f5f3f3] ${opt === monthYearFilter ? 'bg-[#efeded] font-bold text-[#bd0014]' : 'text-[#1b1c1c]'}`}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           <button type="button" onClick={handleClearAll} className="ml-auto text-[13px] font-bold text-[#bd0014]">Clear All</button>
         </div>
@@ -775,7 +745,7 @@ function DemandForecastView({
               <table className="min-w-[800px] w-full">
                 <thead className="sticky top-0 z-10 bg-[#efeded]">
                   <tr>
-                    {['SPARE PART DETAILS', 'COMPATIBILITY', 'PREDICTED DEMAND', 'CURRENT STOCK', 'STOCK HEALTH', 'DEMAND'].map(h => (
+                    {['SPARE PART DETAILS', 'COMPATIBILITY', 'WAREHOUSE', 'ON HAND', 'RESERVED', 'AVAILABLE'].map(h => (
                       <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                     ))}
                   </tr>
@@ -795,13 +765,11 @@ function DemandForecastView({
                       <td className="px-4 py-3">
                         <span className="rounded-[2px] bg-[#efeded] px-2 py-1 text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{row.compat}</span>
                       </td>
-                      <td className="px-4 py-3 text-[13px] font-medium text-[#1b1c1c]">{row.demand.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-[13px] font-medium text-[#1b1c1c]">{row.warehouse}</td>
                       <td className="px-4 py-3 text-[13px] font-medium" style={{ color: isNightMode && row.stockColor === '#1b1c1c' ? '#ffffff' : row.stockColor }}>{row.stock.toLocaleString()}</td>
-                      <td className="px-4 py-3"><HealthBar pct={row.health} /></td>
+                      <td className="px-4 py-3">{row.reserved ?? 'Unmapped'}</td>
                       <td className="px-4 py-3">
-                        <span className="rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase" style={{ color: row.confColor, backgroundColor: row.confBg }}>
-                          {row.conf}
-                        </span>
+                        {row.available ?? 'Unmapped'}
                       </td>
                     </tr>
                   ))}
@@ -809,57 +777,11 @@ function DemandForecastView({
               </table>
             </div>
             <div className="flex flex-col gap-2 border-t border-[#e9bcb7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <span className="text-[13px] text-[#5f5e5e]">Showing 1 – 25 of 1,482 parts</span>
-              <div className="flex items-center gap-1">
-                {['‹', '1', '2', '3', '...', '›'].map((p, i) => (
-                  <button key={i} className={`flex size-8 items-center justify-center rounded-[2px] text-[13px] ${p === '1' ? 'bg-[#bd0014] text-white' : 'text-[#5f5e5e] hover:bg-[#efeded]'}`}>{p}</button>
-                ))}
-              </div>
+              <span className="text-[13px] text-[#5f5e5e]">Showing {filteredRows.length} of {stockRows.length} warehouse stock records</span>
             </div>
           </div>
 
-          {/* Stock Distribution */}
-          <div className="w-full rounded-[4px] border border-[#e9bcb7] bg-white p-5 xl:w-[260px] xl:flex-shrink-0">
-            <p className="mb-4 text-[13px] font-bold text-[#1b1c1c]">Stock Distribution</p>
-            <div className="mb-5 flex items-center justify-center">
-              <div className="relative flex h-[120px] w-[120px] items-center justify-center">
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="48" fill="none" stroke="#e9e8e7" strokeWidth="12"/>
-                  <circle cx="60" cy="60" r="48" fill="none" stroke="#22c55e" strokeWidth="12"
-                    strokeDasharray={`${0.78 * 2 * Math.PI * 48} ${2 * Math.PI * 48}`}
-                    strokeDashoffset={2 * Math.PI * 48 * 0.25}
-                    strokeLinecap="round"/>
-                  <circle cx="60" cy="60" r="48" fill="none" stroke="#f59e0b" strokeWidth="12"
-                    strokeDasharray={`${0.16 * 2 * Math.PI * 48} ${2 * Math.PI * 48}`}
-                    strokeDashoffset={2 * Math.PI * 48 * 0.25 - 0.78 * 2 * Math.PI * 48}
-                    strokeLinecap="round"/>
-                  <circle cx="60" cy="60" r="48" fill="none" stroke="#ef4444" strokeWidth="12"
-                    strokeDasharray={`${0.06 * 2 * Math.PI * 48} ${2 * Math.PI * 48}`}
-                    strokeDashoffset={2 * Math.PI * 48 * 0.25 - 0.94 * 2 * Math.PI * 48}
-                    strokeLinecap="round"/>
-                </svg>
-                <div className="absolute text-center">
-                  <p className="text-[20px] font-black text-[#1b1c1c]">78%</p>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">OPTIMAL</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              {[
-                { color: '#22c55e', label: 'Optimal', value: '6,420' },
-                { color: '#f59e0b', label: 'Reorder Warning', value: '1,240' },
-                { color: '#ef4444', label: 'Out of Stock', value: '142' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="size-2 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-[13px] text-[#5f5e5e]">{item.label}</span>
-                  </div>
-                  <span className="text-[13px] font-medium text-[#1b1c1c]">{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
@@ -867,25 +789,6 @@ function DemandForecastView({
 }
 
 // ─── Prediction Queue View ────────────────────────────────────────────────────
-
-const predRows = [
-  {
-    id: 'ACC-9482-TX', date: '24 Oct 2024, 08:12', vehicle: 'Camry Hybrid', year: 2024,
-    parts: [{ name: 'FRONT BUMPER', level: 'High', levelColor: '#15803d' }, { name: 'GRILLE ASSY', level: 'High', levelColor: '#15803d' }, { name: 'L-HEADLIGHT', level: 'Med', levelColor: '#b45309' }], conf: 94, level: 'High', levelColor: '#15803d', dot: '#22c55e',
-  },
-  {
-    id: 'ACC-8110-CA', date: '23 Oct 2024, 14:45', vehicle: 'RAV4 Prime', year: 2023,
-    parts: [{ name: 'REAR TAILGATE', level: 'Med', levelColor: '#b45309' }, { name: 'BUMPER COVER', level: 'Low', levelColor: '#b91c1c' }], conf: 72, level: 'Med', levelColor: '#b45309', dot: '#f59e0b',
-  },
-  {
-    id: 'ACC-7231-NY', date: '22 Oct 2024, 09:30', vehicle: 'Tacoma', year: 2024,
-    parts: [{ name: 'RADIATOR CORE', level: 'Low', levelColor: '#b91c1c' }, { name: 'HOOD PANEL', level: 'Low', levelColor: '#b91c1c' }, { name: '+2 MORE', level: 'Low', levelColor: '#b91c1c' }], conf: 45, level: 'Low', levelColor: '#b91c1c', dot: '#ef4444',
-  },
-  {
-    id: 'ACC-5529-IL', date: '21 Oct 2024, 11:10', vehicle: 'Corolla Cross', year: 2023,
-    parts: [{ name: 'WHEEL ARCH', level: 'High', levelColor: '#15803d' }, { name: 'R-FENDER', level: 'High', levelColor: '#15803d' }], conf: 89, level: 'High', levelColor: '#15803d', dot: '#22c55e',
-  },
-]
 
 function PredictionQueueView({
   searchTerm,
@@ -920,24 +823,143 @@ function PredictionQueueView({
   isNightMode?: boolean
   onToggleNightMode?: () => void
 }) {
-  const [queueRows, setQueueRows] = useState(predRows)
+  const [showConversion, setShowConversion] = useState(false)
+  const [queueRows, setQueueRows] = useState<Claim[]>([])
+  const [pendingStorageKey] = useState(() => {
+    try { return `toyota-pending-intake:${localStorage.getItem('toyota-active-user-email') || userName}` }
+    catch { return `toyota-pending-intake:${userName}` }
+  })
+  const [restoredIntake] = useState(() => readPendingIntake(pendingStorageKey))
+  const restoredBody = restoredIntake ? JSON.parse(restoredIntake.body) : null
+  const [metadata, setMetadata] = useState<ModelMetadata | null>(null)
+  const [queueLoading, setQueueLoading] = useState(true)
+  const [queueError, setQueueError] = useState('')
+  const [metadataError, setMetadataError] = useState('')
+  const [intakeError, setIntakeError] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectedActions, setSelectedActions] = useState<string[]>([])
   const [confidenceFilter, setConfidenceFilter] = useState('All Scores')
   const [yearFilter, setYearFilter] = useState('All Years')
   const [vehicleFilter, setVehicleFilter] = useState('All Models')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [intakeModel, setIntakeModel] = useState<string>(restoredBody?.model || '')
+  const [intakeYear, setIntakeYear] = useState<string>(String(restoredBody?.make_year || 2013))
+  const [impactZone, setImpactZone] = useState<string>(restoredBody?.damage_zone || 'Front')
+  const [isPredicting, setIsPredicting] = useState(false)
+  const [isReviewing, setIsReviewing] = useState(false)
+  const intakeLock = React.useRef(false)
+  const reviewLock = React.useRef(false)
+  const pendingIntake = React.useRef<PendingIntake | null>(restoredIntake)
+  const loadGeneration = React.useRef(0)
+
+  const loadQueue = React.useCallback(async () => {
+    const generation = ++loadGeneration.current
+    setQueueLoading(true)
+    setQueueError('')
+    try {
+      const rows = await apiRequest<Claim[]>('/api/claims')
+      if (generation === loadGeneration.current) {
+        setQueueRows(rows)
+        setSelectedIds(current => current.filter(id => rows.some(row => row.id === id)))
+        setSelectedActions(current => current.filter(id => rows.some(row => row.parts.some(part => `${row.id}-${part.name}` === id))))
+      }
+    } catch {
+      if (generation === loadGeneration.current) setQueueError('Could not load the review queue. Please retry.')
+    } finally {
+      if (generation === loadGeneration.current) setQueueLoading(false)
+    }
+  }, [])
+
+  const loadMetadata = React.useCallback(async () => {
+    setMetadataError('')
+    try {
+      const data = await apiRequest<ModelMetadata>('/api/model-metadata')
+      setMetadata(data)
+      if (!pendingIntake.current) {
+        setIntakeModel(current => data.vehicle_models.includes(current) ? current : '')
+        setImpactZone(current => data.damage_zones.includes(current) ? current : data.damage_zones[0] || '')
+      }
+    } catch {
+      setMetadataError('Vehicle options are unavailable. Retry before creating a claim.')
+    }
+  }, [])
+
+  React.useEffect(() => {
+    void loadQueue()
+    void loadMetadata()
+    return () => { loadGeneration.current++ }
+  }, [loadQueue, loadMetadata])
+
+  const handleClaimsIntake = async () => {
+    if (intakeLock.current) return
+    const submitted = pendingIntake.current ? JSON.parse(pendingIntake.current.body) as { model: string; make_year: number; damage_zone: string } : { model: intakeModel, make_year: Number(intakeYear), damage_zone: impactZone }
+    const year = submitted.make_year
+    if (!pendingIntake.current && (!metadata || !metadata.vehicle_models.includes(intakeModel) || !metadata.damage_zones.includes(impactZone) || !Number.isInteger(year) || year < metadata.min_year || year > metadata.max_year)) {
+      setIntakeError('Choose a supported vehicle variant and enter a valid make year.')
+      return
+    }
+    const body = pendingIntake.current?.body ?? JSON.stringify(submitted)
+    pendingIntake.current ??= { body, key: crypto.randomUUID() }
+    try { sessionStorage.setItem(pendingStorageKey, JSON.stringify(pendingIntake.current)) }
+    catch {
+      pendingIntake.current = null
+      setIntakeError('Browser storage is unavailable. Enable storage before submitting a claim so retries can be recovered safely.')
+      return
+    }
+    intakeLock.current = true
+    setIsPredicting(true)
+    setIntakeError('')
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), 45000)
+    try {
+      const response = await fetch('/api/predict-intake', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': pendingIntake.current.key }, body,
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        if ([400, 422].includes(response.status)) {
+          pendingIntake.current = null
+          sessionStorage.removeItem(pendingStorageKey)
+          setIntakeError('The claim details were rejected. Check the vehicle variant, year and impact zone, then try again.')
+          return
+        }
+        throw new Error(`Intake failed (${response.status})`)
+      }
+      const prediction = await response.json() as IntakeResponse
+      sessionStorage.removeItem(pendingStorageKey)
+      pendingIntake.current = null
+      // Keep the confirmed result visible even if the subsequent queue refresh fails.
+      loadGeneration.current++
+      const claim: Claim = {
+        id: prediction.accident_id, date: new Date().toLocaleString(), vehicle: submitted.model, year,
+        damage_zone: prediction.damage_zone, model_version: prediction.model_version, status: 'PENDING',
+        parts: prediction.predicted_parts.map(part => ({ ...part, name: part.part_name, human_action: null })),
+      }
+      setQueueRows(current => [claim, ...current.filter(row => row.id !== claim.id)])
+      onAction(claim.parts.length ? `${claim.id} saved for review.` : `${claim.id} saved. No parts met the model thresholds; manual inspection is needed.`)
+      void loadQueue()
+    } catch (error) {
+      setIntakeError(controller.signal.aborted
+        ? 'The request timed out after 45 seconds. Retry Claim will check the original submission without creating a duplicate.'
+        : `${error instanceof Error ? error.message : 'Connection failed'}. Could not confirm whether this claim was saved. Retry Claim safely checks the original submission.`)
+    } finally {
+      window.clearTimeout(timer)
+      intakeLock.current = false
+      setIsPredicting(false)
+    }
+  }
 
   const confidenceOptions = ['All Scores', 'High (80+%)', 'Medium (50-79%)', 'Low (<50%)']
-  const yearOptions = ['All Years', '2023', '2024', '2025']
+  const yearOptions = ['All Years', ...Array.from(new Set(queueRows.map(row => row.year))).sort((a, b) => b - a).map(String)]
   const vehicleOptions = ['All Models', ...Array.from(new Set(queueRows.map(row => row.vehicle)))]
 
   const filteredRows = queueRows.filter(row => {
     const matchesSearch = [row.id, row.vehicle, row.parts.map(part => part.name).join(' '), row.date].join(' ').toLowerCase().includes(searchTerm.toLowerCase())
+    const score = averageScore(row)
     const matchesConfidence = confidenceFilter === 'All Scores' || 
-      (confidenceFilter === 'High (80+%)' && row.conf >= 80) ||
-      (confidenceFilter === 'Medium (50-79%)' && row.conf >= 50 && row.conf < 80) ||
-      (confidenceFilter === 'Low (<50%)' && row.conf < 50)
+      (confidenceFilter === 'High (80+%)' && score !== null && score >= 80) ||
+      (confidenceFilter === 'Medium (50-79%)' && score !== null && score >= 50 && score < 80) ||
+      (confidenceFilter === 'Low (<50%)' && score !== null && score < 50)
     const matchesYear = yearFilter === 'All Years' || row.year.toString() === yearFilter
     const matchesVehicle = vehicleFilter === 'All Models' || row.vehicle === vehicleFilter
     return matchesSearch && matchesConfidence && matchesYear && matchesVehicle
@@ -949,44 +971,28 @@ function PredictionQueueView({
     )
   }
 
-  const approveRow = (id: string) => {
-    setQueueRows(current => current.filter(row => row.id !== id))
-    setSelectedIds(current => current.filter(item => item !== id))
-    onAction(`Prediction ${id} approved.`)
-  }
-
-  const rejectRow = (id: string) => {
-    setQueueRows(current => current.filter(row => row.id !== id))
-    setSelectedIds(current => current.filter(item => item !== id))
-    onAction(`Prediction ${id} rejected.`)
-  }
-
-  const handleSelectedAction = (action: 'approved' | 'rejected') => {
-    if (selectedIds.length === 0 && selectedActions.length === 0) {
-      onAction(`Select predictions or human actions to ${action}.`)
+  const handleSelectedAction = async (action: 'approved' | 'rejected', ids = selectedIds) => {
+    if (reviewLock.current) return
+    if (ids.length === 0 && selectedActions.length === 0) {
+      onAction('Select at least one claim or part to review.')
       return
     }
-
-    setQueueRows(current => current.flatMap(row => {
-      if (selectedIds.includes(row.id)) return []
-      const remainingParts = row.parts.filter(part => !selectedActions.includes(`${row.id}-${part.name}`))
-      return remainingParts.length > 0 ? [{ ...row, parts: remainingParts }] : []
-    }))
-    setSelectedIds([])
-    setSelectedActions([])
-    onAction(`Selected ${action}.`)
-  }
-
-  const handleApproveSelected = () => {
-    handleSelectedAction('approved')
-  }
-
-  const handleRejectSelected = () => {
-    handleSelectedAction('rejected')
+    reviewLock.current = true
+    setIsReviewing(true)
+    try {
+      const parts = queueRows.flatMap(row => row.parts.filter(part => selectedActions.includes(`${row.id}-${part.name}`)).map(part => ({ accident_id: row.id, part_name: part.name })))
+      await apiRequest('/api/claims/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accident_ids: ids, parts, action: action.toUpperCase() }) })
+      setSelectedIds([])
+      setSelectedActions([])
+      onAction(`Selected reviews ${action}.`)
+      await loadQueue()
+    } catch { onAction('Could not confirm the review. Check the refreshed queue before retrying.'); await loadQueue() }
+    finally { reviewLock.current = false; setIsReviewing(false) }
   }
 
   return (
     <div className="flex flex-1 flex-col">
+      {showConversion && <ClaimConversionModal onClose={() => setShowConversion(false)} onSaved={onAction} />}
       <TopNav
         searchPlaceholder="Search orders or parts..."
         value={searchTerm}
@@ -1009,14 +1015,52 @@ function PredictionQueueView({
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-[18px] font-semibold tracking-[-0.18px] text-[#1b1c1c]">AI Prediction Review Queue</h2>
-            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Reviewing cluster-based demand spikes for collision patterns.</p>
+            <p className="mt-0.5 text-[13px] text-[#5f5e5e]">Review suggested repair parts and their model scores before approving claims.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={handleApproveSelected} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
+            <button type="button" onClick={() => setShowConversion(true)} className="rounded border border-[#e9bcb7] bg-white px-4 py-2 text-xs font-bold text-[#1b1c1c]">Create fulfillment from reviewed claim</button>
+            <button type="button" disabled={isPredicting || isReviewing || queueLoading || !!queueError || queueRows.length === 0} onClick={() => void handleSelectedAction('approved', queueRows.map(row => row.id))} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
+              Approve All Claims
+            </button>
+            <button type="button" disabled={isPredicting || isReviewing || queueLoading || !!queueError} onClick={() => void handleSelectedAction('approved')} className="flex h-9 items-center gap-2 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white">
               ✓ Approve Selected
             </button>
-            <button type="button" onClick={handleRejectSelected} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
+            <button type="button" disabled={isPredicting || isReviewing || queueLoading || !!queueError} onClick={() => void handleSelectedAction('rejected')} className="flex h-9 items-center gap-2 rounded-[4px] border border-[#e9bcb7] bg-white px-4 text-[11px] font-bold tracking-[0.55px] text-[#1b1c1c]">
               ✕ Reject Selected
+            </button>
+          </div>
+        </div>
+
+        {metadataError && <p role="alert" className="mb-4 text-sm text-[#bd0014]">{metadataError} <button type="button" onClick={() => void loadMetadata()} className="underline">Retry vehicle options</button></p>}
+        {!metadata && !metadataError && <p role="status">Loading supported vehicle variants...</p>}
+        {pendingIntake.current && !isPredicting && <p role="status" className="mb-4 text-sm text-[#5f5e5e]">A previous submission needs confirmation. You can edit the fields for your next claim. Retry Claim sends the original saved details; after it succeeds, submit your edited details as a new claim.</p>}
+        {intakeError && <p role="alert" className="mb-4 text-sm text-[#bd0014]">{intakeError}</p>}
+        <div className="mb-6 rounded-[4px] border border-[#e9bcb7] bg-white p-4">
+          <div className="mb-3">
+            <p className="text-[12px] font-bold uppercase tracking-[0.55px] text-[#bd0014]">Vehicle Claims Intake</p>
+            <p className="mt-1 text-[12px] text-[#5f5e5e]">Choose the exact vehicle variant. If it is not listed, manual assessment is required.</p>
+          </div>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <label className="flex flex-1 flex-col gap-1 text-[11px] font-bold text-[#5f5e5e]">
+              Vehicle Model
+              <select disabled={!metadata || isPredicting} value={intakeModel} onChange={event => setIntakeModel(event.target.value)} className="h-9 rounded-[4px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[12px] font-bold text-[#1b1c1c]">
+                <option value="">Choose a vehicle variant</option>
+                {pendingIntake.current && !metadata?.vehicle_models.includes(intakeModel) && <option value={intakeModel}>{intakeModel}</option>}
+                {metadata?.vehicle_models.map(model => <option key={model}>{model}</option>)}
+              </select>
+            </label>
+            <label className="flex w-full flex-col gap-1 text-[11px] font-bold text-[#5f5e5e] lg:w-28">
+              Year
+              <input disabled={isPredicting} min={metadata?.min_year} max={metadata?.max_year} step="1" type="number" value={intakeYear} onChange={event => setIntakeYear(event.target.value)} className="h-9 rounded-[4px] border border-[#e9bcb7] bg-[#f8f4f3] px-3 text-[12px] font-bold text-[#1b1c1c]" />
+            </label>
+            <fieldset className="flex flex-1 flex-col gap-1">
+              <legend className="text-[11px] font-bold text-[#5f5e5e]">Impact Zone</legend>
+              <div className="flex h-9 items-center gap-4 rounded-[4px] border border-[#e9bcb7] bg-[#f8f4f3] px-3">
+                {(metadata?.damage_zones ?? []).map(zone => <label key={zone} className="flex items-center gap-1 text-[12px] font-bold text-[#1b1c1c]"><input disabled={isPredicting} type="radio" name="impact-zone" value={zone} checked={impactZone === zone} onChange={event => setImpactZone(event.target.value)} className="accent-[#bd0014]" />{zone}</label>)}
+              </div>
+            </fieldset>
+            <button type="button" onClick={handleClaimsIntake} disabled={isPredicting || (!pendingIntake.current && (!metadata || !intakeModel)) || isReviewing} className="h-9 rounded-[4px] bg-[#bd0014] px-4 text-[11px] font-bold tracking-[0.55px] text-white disabled:opacity-60">
+              {isPredicting ? 'Predicting...' : pendingIntake.current ? 'Retry Claim' : 'Predict Damaged Parts'}
             </button>
           </div>
         </div>
@@ -1025,7 +1069,7 @@ function PredictionQueueView({
         <div className="mb-6 flex flex-wrap items-center gap-4 rounded-[4px] border border-[#e9bcb7] bg-white p-3">
           {/* Confidence Score Dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#5f5e5e]">Demand Level</span>
+            <span className="text-[13px] text-[#5f5e5e]">Average Model Score</span>
             <div className="relative">
               <button type="button" onClick={() => setOpenDropdown(openDropdown === 'confidence' ? null : 'confidence')} className="flex h-8 min-w-[120px] items-center gap-1 rounded-[4px] border border-[#e9bcb7] bg-[#f5f3f3] px-3 text-[13px] text-[#1b1c1c]">
                 {confidenceFilter} <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="#5f5e5e" strokeWidth="1.5"/></svg>
@@ -1089,22 +1133,26 @@ function PredictionQueueView({
             <table className="min-w-[820px] w-full">
               <thead className="sticky top-0 z-10 bg-[#efeded]">
                 <tr>
-                  <th className="w-8 px-4 py-3"><input type="checkbox" checked={selectedIds.length > 0 && selectedIds.length === filteredRows.length} onChange={() => {
-                    if (selectedIds.length === filteredRows.length) {
+                  <th className="w-8 px-4 py-3"><input type="checkbox" aria-label="Select all visible claims" disabled={isReviewing} checked={filteredRows.length > 0 && filteredRows.every(row => selectedIds.includes(row.id))} onChange={() => {
+                    if (filteredRows.every(row => selectedIds.includes(row.id))) {
                       setSelectedIds([])
                     } else {
                       setSelectedIds(filteredRows.map(row => row.id))
                     }
                   }} className="size-4" /></th>
-                  {['ACCIDENT ID / DATE', 'VEHICLE TYPE', 'PREDICTED PARTS NEEDED', 'DEMAND', 'HUMAN ACTION'].map(h => (
+                  {['ACCIDENT ID / DATE', 'VEHICLE TYPE', 'SUGGESTED PARTS / MODEL SCORE', 'SCORE LEVEL', 'HUMAN ACTION'].map(h => (
                     <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row, i) => (
-                  <tr key={i} className="border-b border-[#e9bcb7]">
-                    <td className="px-4 py-4"><input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleSelected(row.id)} className="size-4" /></td>
+                {(queueLoading || queueError || filteredRows.length === 0) && <tr><td colSpan={6} className="p-6 text-center text-sm text-[#5f5e5e]" role={queueError ? 'alert' : 'status'}>
+                  {queueLoading ? 'Loading claims...' : queueError || (queueRows.length ? 'No claims match these filters.' : 'No claims are awaiting review.')}
+                  {queueError && <button type="button" onClick={() => void loadQueue()} className="ml-2 underline">Retry queue</button>}
+                </td></tr>}
+                {!queueLoading && filteredRows.map(row => (
+                  <tr key={row.id} className="border-b border-[#e9bcb7]">
+                    <td className="px-4 py-4"><input type="checkbox" aria-label={`Select claim ${row.id}`} disabled={isReviewing} checked={selectedIds.includes(row.id)} onChange={() => toggleSelected(row.id)} className="size-4" /></td>
                     <td className="px-4 py-4">
                       <p className="text-[13px] font-semibold text-[#1b1c1c]">{row.id}</p>
                       <p className="mt-0.5 text-[11px] text-[#5f5e5e]">{row.date}</p>
@@ -1112,24 +1160,26 @@ function PredictionQueueView({
                     <td className="px-4 py-4">
                       <p className="text-[13px] font-medium text-[#1b1c1c]">{row.vehicle}</p>
                       <p className="text-[11px] text-[#5f5e5e]">Model Year: {row.year}</p>
+                      <p className="mt-1 text-[11px] text-[#5f5e5e]">Impact zone: {row.damage_zone || 'Not recorded'}</p>
                     </td>
                     <td className="px-4 py-4">
+                      {row.parts.length === 0 && <p className="text-[12px] text-[#5f5e5e]">No parts met the prediction thresholds. Manual inspection needed.</p>}
                       <div className="flex flex-wrap gap-1">
                         {row.parts.map(part => (
-                          <span key={part.name} className="rounded-[2px] bg-[#efeded] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-[#5f5e5e]">{part.name}</span>
+                          <span key={part.name} className="rounded-[2px] bg-[#efeded] px-2 py-1 text-[11px] font-bold tracking-[0.5px] text-[#5f5e5e]">{part.name} - {part.confidence_pct.toFixed(1)}% model score</span>
                         ))}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1">
-                        {row.parts.map(part => <span key={part.name} className="text-[11px] font-bold" style={{ color: part.levelColor }}>{part.level}</span>)}
+                        {row.parts.map(part => <span key={part.name} className="text-[11px] font-bold" style={{ color: part.confidence_pct >= 80 ? '#15803d' : part.confidence_pct >= 50 ? '#b45309' : '#b91c1c' }}>{scoreLevel(part.confidence_pct)}</span>)}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-col gap-1">
                         {row.parts.map(part => {
                           const actionId = `${row.id}-${part.name}`
-                          return <label key={actionId} className="flex h-[22px] items-center"><input aria-label={`Human action for ${part.name}`} type="checkbox" checked={selectedActions.includes(actionId)} onChange={() => setSelectedActions(current => current.includes(actionId) ? current.filter(id => id !== actionId) : [...current, actionId])} className="size-4 accent-[#bd0014]" /></label>
+                          return <label key={actionId} className="flex h-[22px] items-center"><input disabled={isReviewing} aria-label={`Review ${part.name} for ${row.id}`} type="checkbox" checked={selectedActions.includes(actionId)} onChange={() => setSelectedActions(current => current.includes(actionId) ? current.filter(id => id !== actionId) : [...current, actionId])} className="size-4 accent-[#bd0014]" /></label>
                         })}
                       </div>
                     </td>
@@ -1139,22 +1189,17 @@ function PredictionQueueView({
             </table>
           </div>
           <div className="flex flex-col gap-2 border-t border-[#e9bcb7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-[13px] text-[#5f5e5e]">Showing 4 of 128 predictions</span>
-            <div className="flex items-center gap-1">
-              {['‹', '1', '2', '3', '›'].map((p, i) => (
-                <button key={i} className={`flex size-8 items-center justify-center rounded-[2px] text-[13px] ${p === '1' ? 'bg-[#bd0014] text-white' : 'text-[#5f5e5e] hover:bg-[#efeded]'}`}>{p}</button>
-              ))}
-            </div>
+            <span className="text-[13px] text-[#5f5e5e]">Showing {filteredRows.length} of {queueRows.length} pending claims</span>
           </div>
         </div>
 
         {/* Bottom stats */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Total Queue', value: '128', sub: '↓ -12% vs last week', subColor: '#22c55e', border: '#e9bcb7' },
-            { label: 'Avg. Confidence', value: '78.4%', sub: 'Stable accuracy margin', subColor: '#5f5e5e', border: '#e9bcb7' },
-            { label: 'Approval Rate', value: '91%', sub: '⭐ High AI performance', subColor: '#15803d', border: '#e9bcb7' },
-            { label: 'Pending Manual Action', value: '14', sub: 'Requires immediate review', subColor: '#bd0014', border: '#bd0014' },
+            { label: 'Pending Claims', value: String(queueRows.length), sub: 'Awaiting review', subColor: '#5f5e5e', border: '#e9bcb7' },
+            { label: 'Suggested Parts', value: String(queueRows.reduce((sum, row) => sum + row.parts.length, 0)), sub: 'Unreviewed suggestions', subColor: '#5f5e5e', border: '#e9bcb7' },
+            { label: 'Manual Inspection', value: String(queueRows.filter(row => row.parts.length === 0).length), sub: 'No parts passed thresholds', subColor: '#bd0014', border: '#e9bcb7' },
+            { label: 'Selected Claims', value: String(selectedIds.length), sub: 'Whole-claim review selected', subColor: '#5f5e5e', border: '#e9bcb7' },
           ].map(s => (
             <div key={s.label} className="rounded-[4px] bg-white p-4" style={{ border: `1px solid ${s.border}` }}>
               <p className="mb-1 text-[13px] text-[#5f5e5e]">{s.label}</p>
@@ -1170,22 +1215,9 @@ function PredictionQueueView({
 
 // ─── Inventory & Fulfillment View ─────────────────────────────────────────────
 
-const workshops = [
-  { org: 'Anods Workshop', name: 'Workshop #012', addedDate: '2026-01-12', pending: 24, urgent: '8 CRITICAL', urgentColor: '#bd0014', urgentBg: '#fef2f2', transit: '4 SKUS' },
-  { org: 'Kali Service', name: 'Workshop #045', addedDate: '2026-02-03', pending: 11, urgent: '0 ALERT', urgentColor: '#b45309', urgentBg: '#fffbeb', transit: '12 SKUS' },
-  { org: 'Toyota City Hub', name: 'Workshop #008', addedDate: '2026-02-18', pending: 56, urgent: '15 CRITICAL', urgentColor: '#bd0014', urgentBg: '#fef2f2', transit: '2 SKUS' },
-]
-
-const fulfillRows = [
-  { id: 'fulfill-1', workshop: 'Workshop #012 – Anods', parts: [{ name: 'Bumper (Front)', sku: 'TOY-7782-BRK', qty: 2, unitPrice: 18500 }, { name: 'Front Grille', sku: 'TOY-7782-GRL', qty: 2, unitPrice: 9500 }], status: 'PENDING' },
-  { id: 'fulfill-2', workshop: 'Workshop #008 – Toyota City Hub', parts: [{ name: 'R Fender', sku: 'PRI-4401-CLT', qty: 1, unitPrice: 32000 }], status: 'IN TRANSIT' },
-  { id: 'fulfill-3', workshop: 'Workshop #045 – Kali', parts: [{ name: 'LED Headlamp Unit (L)', sku: 'LEX-9003-LIT', qty: 2, unitPrice: 28500 }], status: 'IN TRANSIT' },
-  { id: 'fulfill-4', workshop: 'Workshop #012 – Anods', parts: [{ name: 'L Side Mirror', sku: 'TOY-2211-SUS', qty: 12, unitPrice: 8500 }], status: 'PENDING' },
-]
-
-const chartBars = [
-  { day: 'Mon', val: 72 }, { day: 'Tue', val: 80 }, { day: 'Wed', val: 96 }, { day: 'Thu', val: 65 }, { day: 'Fri', val: 58 }, { day: 'Sat', val: 70 },
-]
+type WorkshopCard = { org: string; name: string; addedDate: string }
+type FulfillmentPart = { name: string; sku: string; qty: number; unitPrice: number; vehicle_model?: string; make_year?: number }
+type FulfillmentRow = { id: string; workshop: string; status: string; accident_id?: string; parts: FulfillmentPart[] }
 
 function InventoryFulfillmentView({
   searchTerm,
@@ -1225,16 +1257,22 @@ function InventoryFulfillmentView({
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [showAddWorkshop, setShowAddWorkshop] = useState(false)
   const [showWorkshopDetails, setShowWorkshopDetails] = useState(false)
-  const [workshopCards, setWorkshopCards] = useState(workshops)
+  const [workshopCards, setWorkshopCards] = useState<WorkshopCard[]>([])
   const [workshopForm, setWorkshopForm] = useState({ org: '', name: '', addedDate: new Date().toISOString().slice(0, 10) })
   const [orderForm, setOrderForm] = useState({
     workshopName: '',
     parts: [{ partNameNo: '', vehicleModel: '', makeYear: '', quantity: '', unitPrice: '' }],
   })
-  const [fulfillmentRows, setFulfillmentRows] = useState(fulfillRows)
+  const [fulfillmentRows, setFulfillmentRows] = useState<FulfillmentRow[]>([])
+  const [managedOrder, setManagedOrder] = useState<string | null>(null)
   const [selectedFulfillmentIds, setSelectedFulfillmentIds] = useState<string[]>([])
+  const loadWorkshops = () => apiRequest<Array<{name: string; organization: string; created_at: string}>>('/api/workshops')
+    .then(items => setWorkshopCards(items.map(item => ({ org: item.organization, name: item.name, addedDate: item.created_at.slice(0, 10), pending: 0, urgent: '0 ALERT', urgentColor: '#b45309', urgentBg: '#fffbeb', transit: '0 SKUS' }))))
+    .catch(error => onAction(`Could not load workshops: ${String(error)}`))
+  const loadFulfillment = () => apiRequest<typeof fulfillmentRows>('/api/fulfillment').then(setFulfillmentRows).catch(error => onAction(`Could not load fulfillment: ${String(error)}`))
+  React.useEffect(() => { void loadWorkshops(); void loadFulfillment() }, [])
 
-  const handleAddWorkshop = () => {
+  const handleAddWorkshop = async () => {
     const organizationName = workshopForm.org.trim()
     const workshopName = workshopForm.name.trim()
     if (!organizationName || !workshopName) {
@@ -1242,56 +1280,41 @@ function InventoryFulfillmentView({
       return
     }
 
-    setWorkshopCards(current => [
-      {
-        org: organizationName,
-        name: workshopName,
-        addedDate: workshopForm.addedDate,
-        pending: 0,
-        urgent: '0 ALERT',
-        urgentColor: '#b45309',
-        urgentBg: '#fffbeb',
-        transit: '0 SKUS',
-      },
-      ...current,
-    ])
+    try { await apiRequest('/api/workshops', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: workshopName, organization: organizationName }) }) }
+    catch (error) { onAction(`Could not save workshop: ${String(error)}`); return }
+    void loadWorkshops()
     setWorkshopForm({ org: '', name: '', addedDate: new Date().toISOString().slice(0, 10) })
     setShowWorkshopDetails(false)
     onAction(`${workshopName} added successfully.`)
   }
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     const workshopName = orderForm.workshopName.trim()
     const parts = orderForm.parts
-      .filter(part => part.vehicleModel.trim() && part.makeYear.trim())
-      .map((part, index) => ({
-        name: part.partNameNo.trim() || part.vehicleModel.trim(),
+      
+      .map(part => ({
+        name: part.partNameNo.trim(),
+        vehicleModel: part.vehicleModel.trim(),
         sku: part.partNameNo.trim() || `MAKE YEAR: ${part.makeYear.trim()}`,
         makeYear: part.makeYear.trim(),
         qty: Number(part.quantity) || 0,
         unitPrice: Number(part.unitPrice) || 0,
       }))
 
-    if (!workshopName || parts.length === 0) {
+    if (!workshopName || parts.length === 0 || parts.some(part => !part.name || !part.vehicleModel || !part.makeYear || !Number.isInteger(part.qty) || part.qty <= 0 || part.unitPrice < 0)) {
       onAction('Enter a workshop name and at least one part.')
       return
     }
 
-    setFulfillmentRows(rows => [
-      {
-        id: `fulfill-${Date.now()}`,
-        workshop: workshopName,
-        parts,
-        status: 'PENDING',
-      },
-      ...rows,
-    ])
+    try { await apiRequest('/api/fulfillment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ workshop_name: workshopName, parts: parts.map(part => ({ part_name: part.name, vehicle_model: part.vehicleModel, make_year: Number(part.makeYear), quantity: part.qty, unit_price: part.unitPrice })) }) }) }
+    catch (error) { onAction(`Could not save fulfillment order: ${String(error)}`); return }
+    void loadFulfillment()
     setOrderForm({ workshopName: '', parts: [{ partNameNo: '', vehicleModel: '', makeYear: '', quantity: '', unitPrice: '' }] })
     setShowAddWorkshop(false)
     onAction(`New order for ${workshopName} added successfully.`)
   }
 
-  const statusOptions = ['All Status', 'PENDING', 'IN TRANSIT']
+  const statusOptions = ['All Status', 'PENDING', 'IN TRANSIT', 'FULFILLED']
   const workshopOptions = ['All Workshops', ...workshopCards.map(workshop => workshop.name)]
 
   const filteredRows = fulfillmentRows.filter(row => {
@@ -1301,19 +1324,17 @@ function InventoryFulfillmentView({
     return matchesSearch && matchesStatus && matchesWorkshop
   })
 
-  const fulfillSelectedOrders = () => {
+  const fulfillSelectedOrders = async () => {
     if (selectedFulfillmentIds.length === 0) return
-    setFulfillmentRows(rows => rows.filter(row => !selectedFulfillmentIds.includes(row.id)))
+    const results = await Promise.allSettled(selectedFulfillmentIds.map(id => apiRequest(`/api/fulfillment/${id.replace('fulfill-', '')}?status=FULFILLED`, { method: 'PATCH' })))
+    await loadFulfillment()
     setSelectedFulfillmentIds([])
-    onAction('Selected fulfillment orders cleared.')
-  }
-
-  const updateFulfillmentStatus = (rowId: string, status: 'PENDING' | 'IN TRANSIT') => {
-    setFulfillmentRows(rows => rows.map(row => row.id === rowId ? { ...row, status } : row))
+    onAction(`${results.filter(r => r.status === 'fulfilled').length} deliveries confirmed; ${results.filter(r => r.status === 'rejected').length} failed.`)
   }
 
   const clearFulfillmentRow = (rowId: string) => {
-    setFulfillmentRows(rows => rows.filter(row => row.id !== rowId))
+    void apiRequest(`/api/fulfillment/${rowId.replace('fulfill-', '')}`, { method: 'DELETE' })
+      .then(() => loadFulfillment()).catch(error => onAction(`Could not delete fulfillment order: ${String(error)}`))
     setSelectedFulfillmentIds(current => current.filter(id => id !== rowId))
   }
 
@@ -1476,17 +1497,19 @@ function InventoryFulfillmentView({
               <div className="mt-3 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] text-[#5f5e5e]">Pending Requests</p>
-                  <p className="text-[24px] font-black text-[#1b1c1c]">{w.pending}</p>
+                  <p className="text-[24px] font-black text-[#1b1c1c]">{fulfillmentRows.filter(row => row.workshop === w.name && row.status === 'PENDING').length}</p>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 2h10v8H0V2zM10 4l6 3-6 3V4z" fill="#3b82f6"/></svg>
-                <span className="text-[11px] font-bold tracking-[0.55px] text-[#3b82f6]">IN TRANSIT: {w.transit}</span>
+                <span className="text-[11px] font-bold tracking-[0.55px] text-[#3b82f6]">IN TRANSIT: {fulfillmentRows.filter(row => row.workshop === w.name && row.status === 'IN TRANSIT').length} orders</span>
               </div>
             </div>
           ))}
         </div>
 
+        <InventoryOperations />
+        {managedOrder && <FulfillmentActionsModal orderId={managedOrder} onClose={() => setManagedOrder(null)} onUpdated={() => void loadFulfillment()} />}
         {/* Active Fulfillment Queue */}
         <div className="mb-6 overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white">
           <div className="flex flex-col gap-2 border-b border-[#e9bcb7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1504,12 +1527,13 @@ function InventoryFulfillmentView({
               <tbody>
                 {filteredRows.map(row => (
                   <tr key={row.id} className="border-b border-[#e9bcb7]">
-                    <td className="px-4 py-4 text-[13px] text-[#5f5e5e]">{row.workshop}</td>
+                    <td className="px-4 py-4 text-[13px] text-[#5f5e5e]">{row.workshop}{row.accident_id && <p className="mt-1 text-xs">Claim: {row.accident_id}</p>}</td>
                     <td className="px-4 py-4">
                       {row.parts.map(part => (
                         <div key={part.sku} className="mb-1 last:mb-0">
                           <p className="text-[13px] font-semibold text-[#1b1c1c]">{part.name}</p>
                           <p className="font-mono text-[11px] text-[#5f5e5e]">SKU: {part.sku}</p>
+                          {part.vehicle_model && <p className="text-xs text-[#5f5e5e]">{part.vehicle_model} ({part.make_year})</p>}
                         </div>
                       ))}
                     </td>
@@ -1521,27 +1545,21 @@ function InventoryFulfillmentView({
                     </td>
                     <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">LKR {row.parts.reduce((total, part) => total + part.qty * part.unitPrice, 0).toLocaleString()}</td>
                     <td className="px-4 py-4">
-                      <select
-                        aria-label={`Update status for ${row.parts.map(part => part.name).join(', ')}`}
-                        value={row.status}
-                        onChange={event => updateFulfillmentStatus(row.id, event.target.value as 'PENDING' | 'IN TRANSIT')}
-                        className={`rounded-[2px] border-0 px-2 py-1 text-[11px] font-bold outline-none ${row.status === 'IN TRANSIT' ? 'bg-[#f0fdf4] text-[#15803d]' : 'bg-[#fffbeb] text-[#b45309]'}`}
-                      >
-                        <option value="PENDING">PENDING</option>
-                        <option value="IN TRANSIT">IN TRANSIT</option>
-                      </select>
+                      <p className="text-xs font-bold">{row.status}</p>
+                      <button className="mt-2 text-xs underline" onClick={() => setManagedOrder(row.id)}>Manage stock & companions</button>
                     </td>
                     <td className="px-4 py-4">
                       <input
                         aria-label={`Fulfill ${row.parts.map(part => part.name).join(', ')}`}
                         type="checkbox"
+                        disabled={row.status !== 'IN TRANSIT'}
                         checked={selectedFulfillmentIds.includes(row.id)}
                         onChange={() => setSelectedFulfillmentIds(current => current.includes(row.id) ? current.filter(id => id !== row.id) : [...current, row.id])}
                         className="size-4 accent-[#bd0014]"
                       />
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <button type="button" aria-label={`Clear ${row.parts.map(part => part.name).join(', ')}`} onClick={() => clearFulfillmentRow(row.id)} className="flex size-7 items-center justify-center rounded-[2px] text-[18px] leading-none text-[#5f5e5e] hover:bg-[#fef2f2] hover:text-[#bd0014]">×</button>
+                      <button type="button" disabled={!!row.accident_id || row.status !== 'PENDING'} title={row.accident_id ? 'Linked claim orders cannot be deleted' : undefined} aria-label={`Clear ${row.parts.map(part => part.name).join(', ')}`} onClick={() => clearFulfillmentRow(row.id)} className="flex size-7 items-center justify-center rounded-[2px] text-[18px] leading-none text-[#5f5e5e] hover:bg-[#fef2f2] hover:text-[#bd0014]">×</button>
                     </td>
                   </tr>
                 ))}
@@ -1549,13 +1567,8 @@ function InventoryFulfillmentView({
             </table>
           </div>
           <div className="flex flex-col gap-2 border-t border-[#e9bcb7] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-[13px] text-[#5f5e5e]">Showing {filteredRows.length} of 128 open fulfillment requests</span>
+            <span className="text-[13px] text-[#5f5e5e]">Showing {filteredRows.length} of {fulfillmentRows.length} fulfillment requests</span>
             <div className="flex items-center gap-3">
-              <button type="button" aria-label="Previous page" className="flex size-8 items-center justify-center rounded-[2px] text-[13px] text-[#5f5e5e] hover:bg-[#efeded]">‹</button>
-              {['1', '2', '3'].map((p, i) => (
-                <button key={i} className={`flex size-8 items-center justify-center rounded-[2px] text-[13px] ${p === '1' ? 'bg-[#bd0014] text-white' : 'text-[#5f5e5e] hover:bg-[#efeded]'}`}>{p}</button>
-              ))}
-              <button type="button" aria-label="Next page" className="flex size-8 items-center justify-center rounded-[2px] text-[13px] text-[#5f5e5e] hover:bg-[#efeded]">›</button>
               <button type="button" onClick={fulfillSelectedOrders} disabled={selectedFulfillmentIds.length === 0} className="rounded-[2px] bg-[#bd0014] px-3 py-2 text-[11px] font-bold tracking-[0.55px] text-white disabled:cursor-not-allowed disabled:opacity-40">
                 FULFILL ORDERS
               </button>
@@ -1563,42 +1576,8 @@ function InventoryFulfillmentView({
           </div>
         </div>
 
-        {/* Bottom row */}
-        <div className="flex flex-col gap-4 xl:flex-row">
-          {/* Chart */}
-          <div className="flex-1 rounded-[4px] border border-[#e9bcb7] bg-white p-5">
-            <p className="mb-6 text-[13px] font-bold text-[#1b1c1c]">Logistics Optimization History</p>
-            <div className="flex h-32 items-end gap-4">
-              {chartBars.map(b => (
-                <div key={b.day} className="flex flex-1 flex-col items-center gap-1">
-                  {b.val === 96 && <span className="text-[11px] text-[#5f5e5e]">96%</span>}
-                  <div
-                    className="w-full rounded-t-[2px]"
-                    style={{ height: `${b.val}%`, backgroundColor: b.val === 96 ? '#bd0014' : '#e9e8e7' }}
-                  />
-                  <span className="text-[11px] text-[#5f5e5e]">{b.day}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <OperationalMetrics fulfillment />
 
-          {/* Regional Fulfillment Rate */}
-          <div className="flex w-full flex-col rounded-[4px] bg-[#bd0014] p-6 xl:w-[280px] xl:flex-shrink-0">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.55px] text-white">Regional Fulfillment Rate</p>
-            <p className="mb-4 text-[48px] font-black leading-none tracking-[-1px] text-white">94.2%</p>
-            <div className="mt-auto flex flex-col gap-2">
-              {[['Avg. Response Time', '14.2m'], ['Inventory Accuracy', '99.8%']].map(([l, v]) => (
-                <div key={l} className="flex items-center justify-between">
-                  <span className="text-[13px] text-white opacity-80">{l}</span>
-                  <span className="text-[13px] font-bold text-white">{v}</span>
-                </div>
-              ))}
-            </div>
-            <button className="mt-4 h-9 w-full rounded-[2px] bg-white text-[11px] font-bold tracking-[0.55px] text-[#bd0014]">
-              Download Performance Report
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   )
@@ -1606,22 +1585,17 @@ function InventoryFulfillmentView({
 
 // ─── Purchase Orders View ─────────────────────────────────────────────────────
 
-const poRows = [
-  { supplier: 'Adison Co.', vehicle: 'Camry (2024)', part: 'Bumper / 88460-47150', qty: 450, unitPrice: 12400, demand: 'HIGH' },
-  { supplier: 'Denso Corp.', vehicle: 'Corolla (2023)', part: 'Bonnet / 16400-0T040', qty: 120, unitPrice: 28150, demand: 'HIGH' },
-  { supplier: 'Sumitomo Electric', vehicle: 'RAV4 (2024)', part: 'R Fender / 82121-02E00', qty: 85, unitPrice: 45000, demand: 'MEDIUM' },
-  { supplier: 'Tokai Rika', vehicle: 'Tacoma (2023)', part: 'L Door Rear / 84820-02190', qty: 120, unitPrice: 4200, demand: 'HIGH' },
-  { supplier: 'Toyota Parts Co.', vehicle: 'Highlander (2024)', part: 'Headlamp / 81110-0E120', qty: 64, unitPrice: 38500, demand: 'HIGH' },
-  { supplier: 'Aisin Seiki', vehicle: 'Camry (2023)', part: 'Brake Pad / 04465-33480', qty: 210, unitPrice: 7800, demand: 'MEDIUM' },
-  { supplier: 'Koito Manufacturing', vehicle: 'RAV4 (2023)', part: 'Fog Lamp / 81210-0R040', qty: 96, unitPrice: 11200, demand: 'LOW' },
-  { supplier: 'Denso Corp.', vehicle: 'Corolla Cross (2024)', part: 'Radiator / 16400-0V240', qty: 48, unitPrice: 26500, demand: 'MEDIUM' },
-]
-
 function PurchaseOrdersView({
   searchTerm,
   onSearchChange,
   onAction,
   addedRows,
+  onRowsChange,
+  shippingCost,
+  setShippingCost,
+  isSaving,
+  setIsSaving,
+  onOrderSaved,
   userName,
   userRole,
   warehouseName,
@@ -1638,7 +1612,13 @@ function PurchaseOrdersView({
   searchTerm: string
   onSearchChange: (value: string) => void
   onAction: (message: string) => void
-  addedRows: typeof poRows
+  addedRows: DraftLine[]
+  onRowsChange: React.Dispatch<React.SetStateAction<DraftLine[]>>
+  shippingCost: string
+  setShippingCost: React.Dispatch<React.SetStateAction<string>>
+  isSaving: boolean
+  setIsSaving: React.Dispatch<React.SetStateAction<boolean>>
+  onOrderSaved: (ids: string[]) => void
   userName: string
   userRole: string
   warehouseName: string
@@ -1652,41 +1632,49 @@ function PurchaseOrdersView({
   isNightMode?: boolean
   onToggleNightMode?: () => void
 }) {
-  const [rows, setRows] = useState([...poRows, ...addedRows])
-  const [shippingCost, setShippingCost] = useState('145000')
+  const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const loadCatalog = () => catalogRequest<CatalogItem[]>('/api/catalog').then(setCatalog).catch(error => onAction(String(error)))
+  React.useEffect(() => { void loadCatalog() }, [])
+  const rows = addedRows
+  const saveLock = React.useRef(false)
+  const [savedOrders, setSavedOrders] = useState<Array<{order_number: string; status: string; part: string; qty: number; unitPrice: number; supplier: string; vehicle: string; shipping_cost: number; source: DraftLine['source'] | null; sku: string | null}>>([])
+  const loadOrders = () => apiRequest<typeof savedOrders>('/api/orders').then(setSavedOrders).catch(error => onAction(`Could not load orders: ${String(error)}`))
+  React.useEffect(() => { void loadOrders() }, [])
 
-  React.useEffect(() => {
-    setRows(current => {
-      const existingKeys = new Set(current.map(row => `${row.supplier}-${row.part}`))
-      const newRows = addedRows.filter(row => !existingKeys.has(`${row.supplier}-${row.part}`))
-      return newRows.length > 0 ? [...current, ...newRows] : current
-    })
-  }, [addedRows])
+
+
 
   const filteredRows = rows.filter(row =>
-    [row.supplier, row.vehicle, row.part, row.demand].join(' ').toLowerCase().includes(searchTerm.toLowerCase()),
+    [row.supplier, row.vehicle, row.part, row.source.kind].join(' ').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const totalOrderValue = filteredRows.reduce((total, row) => total + row.qty * row.unitPrice, 0)
-  const totalQuantity = filteredRows.reduce((total, row) => total + row.qty, 0)
+  const totalOrderValue = rows.reduce((total, row) => total + row.qty * (row.unitPrice ?? 0), 0)
+  const totalQuantity = rows.reduce((total, row) => total + row.qty, 0)
   const totalWithShipping = totalOrderValue + (Number(shippingCost) || 0)
   const budgetProgress = Math.min(100, Math.round((totalWithShipping / 23000000) * 100))
 
-  const finalizeOrder = () => {
-    setRows([])
-    setShippingCost('0')
-    onAction('Purchase order finalized. Table and summary cleared.')
+  const saveOrder = async (status: 'DRAFT' | 'SUBMITTED') => {
+    if (saveLock.current || isSaving) return
+    const error = draftError(rows, Number(shippingCost))
+    if (error) { onAction(error); return }
+    saveLock.current = true
+    setIsSaving(true)
+    try {
+      const saved = await apiRequest<{order_number: string}>('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, shipping_cost: Number(shippingCost), lines: rows.map(row => ({ supplier: row.supplier, vehicle: row.vehicle, part: row.part, quantity: row.qty, unit_price: row.unitPrice, source: row.source, sku: row.sku, vehicle_model: row.vehicle_model, make_year: row.make_year })) }) })
+      onOrderSaved(rows.map(row => row.id))
+      setShippingCost('0')
+      void loadOrders()
+      onAction(`${saved.order_number} ${status === 'DRAFT' ? 'saved as draft' : 'submitted'}.`)
+    } catch (error) { onAction(`Could not confirm order save. Check saved orders before retrying: ${String(error)}`); void loadOrders() }
+    finally { saveLock.current = false; setIsSaving(false) }
   }
 
-  const updateQty = (index: number, nextValue: string) => {
-    const numeric = nextValue === '' ? 0 : Number(nextValue)
-    setRows(current => current.map((row, rowIndex) =>
-      rowIndex === index ? { ...row, qty: Number.isFinite(numeric) ? numeric : 0 } : row,
-    ))
+  const clearRow = (rowToClear: DraftLine) => {
+    onRowsChange(current => current.filter(row => row.id !== rowToClear.id))
   }
 
-  const clearRow = (rowToClear: typeof poRows[number]) => {
-    setRows(current => current.filter(row => row !== rowToClear))
+  const updateLine = (id: string, field: 'supplier' | 'vehicle' | 'qty' | 'unitPrice', value: string | number | null) => {
+    onRowsChange(current => current.map(row => row.id === id ? { ...row, [field]: value } : row))
   }
 
   return (
@@ -1710,8 +1698,16 @@ function PurchaseOrdersView({
       />
       <div className="flex-1 overflow-auto bg-[#fbf9f8] p-4 sm:p-6 lg:p-8">
         <div className="flex min-h-full flex-col gap-8">
+          <CatalogManager onUpdated={() => void loadCatalog()} />
           {/* Left: table */}
           <div className="flex flex-col gap-6">
+            <div className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
+              <h3 className="text-[14px] font-bold text-[#1b1c1c]">Saved purchase orders</h3>
+              {savedOrders.length === 0 && <p className="mt-2 text-[12px] text-[#5f5e5e]">No saved orders yet.</p>}
+              <div className="mt-2 max-h-40 overflow-auto text-[12px] text-[#1b1c1c]">
+                {savedOrders.map((line, index) => <p key={`${line.order_number}-${index}`} className="border-t py-2">{line.order_number} · {line.status} · {line.part} · {line.qty} units · LKR {(line.qty * line.unitPrice).toLocaleString()}</p>)}
+              </div>
+            </div>
             {/* Header */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -1720,31 +1716,41 @@ function PurchaseOrdersView({
               </div>
             </div>
 
+            <p className="text-sm text-[#5f5e5e]">{rows.some(row => row.unitPrice === null) ? 'Some prices are missing; totals include priced lines only. ' : ''}Saving includes all {rows.length} draft lines, including lines hidden by search.</p>
             {/* Table */}
             <div className="overflow-hidden rounded-[2px] border border-[#e9bcb7] bg-white">
               <div className="max-h-[430px] overflow-x-auto overflow-y-auto">
                 <table className="min-w-[1120px] w-full">
                   <thead className="sticky top-0 z-10 bg-[#efeded]">
                     <tr>
-                      {['SUPPLIER NAME', 'VEHICLE MODEL / YEAR', 'PART NAME / NO', 'QUANTITY', 'UNIT PRICE', 'TOTAL PRICE', 'DEMAND LEVEL', ''].map(h => (
+                      {['SUPPLIER NAME', 'VEHICLE MODEL / YEAR', 'PART NAME / NO', 'QUANTITY', 'UNIT PRICE', 'TOTAL PRICE', 'SOURCE', ''].map(h => (
                         <th key={h} className="border-b border-[#e9bcb7] px-4 py-3 text-left text-[11px] font-bold tracking-[0.55px] text-[#5f5e5e]">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row, i) => (
-                      <tr key={`${row.supplier}-${row.part}`} className="border-b border-[#e9bcb7]">
-                        <td className="px-4 py-4 text-[13px] font-medium text-[#1b1c1c]">{row.supplier}</td>
-                        <td className="px-4 py-4 text-[13px] text-[#1b1c1c]">{row.vehicle}</td>
-                        <td className="px-4 py-4 font-mono text-[12px] text-[#1b1c1c]">{row.part}</td>
-                        <td className="px-4 py-4 text-[13px] font-medium text-[#1b1c1c]">{row.qty.toLocaleString()}</td>
-                        <td className="px-4 py-4 text-[13px] text-[#1b1c1c]">LKR {row.unitPrice.toLocaleString()}</td>
-                        <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">LKR {(row.qty * row.unitPrice).toLocaleString()}</td>
+                    {filteredRows.length === 0 && <tr><td colSpan={8} className="p-6 text-sm text-[#5f5e5e]">{rows.length ? 'No draft lines match your search.' : 'No draft lines yet. Add an order or a reviewed companion bundle.'}</td></tr>}
+                    {filteredRows.map(row => (
+                      <tr key={row.id} className="border-b border-[#e9bcb7]">
+                        <td className="px-4 py-4 text-[13px] font-medium text-[#1b1c1c]"><input aria-label={`Supplier for ${row.part}`} disabled={isSaving} value={row.supplier} onChange={event => updateLine(row.id, 'supplier', event.target.value)} placeholder="Enter supplier" className="w-40 rounded border border-[#e9bcb7] bg-[#f8f4f3] p-2" /></td>
+                        <td className="px-4 py-4 text-[13px] text-[#1b1c1c]"><input aria-label={`Vehicle compatibility for ${row.part}`} disabled={isSaving || !!row.sku} value={row.vehicle} onChange={event => updateLine(row.id, 'vehicle', event.target.value)} placeholder="Model / year" className="w-40 rounded border border-[#e9bcb7] bg-[#f8f4f3] p-2" /></td>
+                        <td className="px-4 py-4 font-mono text-[12px] text-[#1b1c1c]">{row.part}
+                          <select aria-label={`Catalog SKU and fitment for ${row.part}`} disabled={isSaving} value={row.sku ? JSON.stringify([row.sku, row.vehicle_model, row.make_year]) : ''} onChange={event => {
+                            const [sku, model, year] = event.target.value ? JSON.parse(event.target.value) : ['', '', null]
+                            onRowsChange(current => current.map(line => line.id === row.id ? { ...line, sku: sku || undefined, vehicle_model: model || undefined, make_year: year || undefined, vehicle: sku ? `${model} (${year})` : '' } : line))
+                          }} className="mt-2 block w-56 rounded border border-[#e9bcb7] bg-[#f8f4f3] p-2 text-xs">
+                            <option value="">Choose catalog SKU / fitment</option>
+                            {catalog.filter(item => item.part_name === row.part.trim().toUpperCase()).flatMap(item => item.fitments.map(f => <option key={`${item.sku}-${f.model}-${f.make_year}`} value={JSON.stringify([item.sku, f.model, f.make_year])}>{item.sku} - {f.model} ({f.make_year})</option>))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-4 text-[13px] font-medium text-[#1b1c1c]"><input aria-label={`Order quantity for ${row.part}`} disabled={isSaving} type="number" min="1" step="1" value={row.qty || ''} onChange={event => updateLine(row.id, 'qty', Number(event.target.value))} className="w-24 rounded border border-[#e9bcb7] bg-[#f8f4f3] p-2" /></td>
+                        <td className="px-4 py-4 text-[13px] text-[#1b1c1c]"><input aria-label={`Unit price for ${row.part}`} disabled={isSaving} type="number" min="0" step="0.01" value={row.unitPrice ?? ''} onChange={event => updateLine(row.id, 'unitPrice', event.target.value === '' ? null : Number(event.target.value))} placeholder="LKR" className="w-28 rounded border border-[#e9bcb7] bg-[#f8f4f3] p-2" /></td>
+                        <td className="px-4 py-4 text-[13px] font-bold text-[#1b1c1c]">LKR {(row.qty * (row.unitPrice ?? 0)).toLocaleString()}</td>
                         <td className="px-4 py-4">
-                          <span className={`rounded-[2px] px-2 py-1 text-[10px] font-bold uppercase ${row.demand === 'HIGH' ? 'bg-[#f0fdf4] text-[#15803d]' : row.demand === 'MEDIUM' ? 'bg-[#fffbeb] text-[#b45309]' : 'bg-[#fef2f2] text-[#b91c1c]'}`}>{row.demand}</span>
+                          <span className="text-xs" title={row.source.rule_version}>{row.source.kind === 'bundle' ? `Bundle (${row.source.mode})` : 'Manual'}{row.source.rule_version && <span className="block text-[#5f5e5e]">Rules: {row.source.rule_version.slice(0, 12)}</span>}</span>
                         </td>
                         <td className="px-4 py-4 text-center">
-                          <button type="button" aria-label={`Clear ${row.part}`} onClick={() => clearRow(row)} className="flex size-7 items-center justify-center rounded-[2px] text-[18px] leading-none text-[#5f5e5e] hover:bg-[#fef2f2] hover:text-[#bd0014]">×</button>
+                          <button type="button" disabled={isSaving} aria-label={`Clear ${row.part}`} onClick={() => clearRow(row)} className="flex size-7 items-center justify-center rounded-[2px] text-[18px] leading-none text-[#5f5e5e] hover:bg-[#fef2f2] hover:text-[#bd0014]">×</button>
                         </td>
                       </tr>
                     ))}
@@ -1752,7 +1758,7 @@ function PurchaseOrdersView({
                 </table>
               </div>
               <div className="flex items-center justify-end border-t border-[#e9bcb7] px-6 py-4">
-                <span className="mr-4 text-[13px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Total of all parts</span>
+                <span className="mr-4 text-[13px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Total of all draft parts</span>
                 <span className="text-[20px] font-black text-[#1b1c1c]">LKR {totalOrderValue.toLocaleString()}</span>
               </div>
             </div>
@@ -1764,9 +1770,9 @@ function PurchaseOrdersView({
               <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">ORDER SUMMARY</p>
             </div>
             <div className="grid gap-5 px-6 py-5 md:grid-cols-2 xl:grid-cols-4">
-              <div><p className="text-[13px] text-[#5f5e5e]">Total spare parts</p><p className="mt-1 text-[22px] font-black text-[#1b1c1c]">{filteredRows.length}</p></div>
+              <div><p className="text-[13px] text-[#5f5e5e]">Total spare parts</p><p className="mt-1 text-[22px] font-black text-[#1b1c1c]">{rows.length}</p></div>
               <div><p className="text-[13px] text-[#5f5e5e]">Total quantity</p><p className="mt-1 text-[22px] font-black text-[#1b1c1c]">{totalQuantity.toLocaleString()} units</p></div>
-              <label><span className="text-[13px] text-[#5f5e5e]">Shipping cost</span><div className="mt-1 flex h-10 items-center rounded-[4px] border border-[#e9bcb7] bg-[#f8f4f3] px-3"><span className="text-[13px] text-[#5f5e5e]">LKR</span><input type="number" min="0" value={shippingCost} onChange={event => setShippingCost(event.target.value)} className="min-w-0 flex-1 bg-transparent px-2 text-[15px] font-bold text-[#1b1c1c] outline-none" /></div></label>
+              <label><span className="text-[13px] text-[#5f5e5e]">Shipping cost</span><div className="mt-1 flex h-10 items-center rounded-[4px] border border-[#e9bcb7] bg-[#f8f4f3] px-3"><span className="text-[13px] text-[#5f5e5e]">LKR</span><input disabled={isSaving} type="number" min="0" step="0.01" value={shippingCost} onChange={event => setShippingCost(event.target.value)} className="min-w-0 flex-1 bg-transparent px-2 text-[15px] font-bold text-[#1b1c1c] outline-none" /></div></label>
               <div><p className="text-[13px] text-[#5f5e5e]">Total order value</p><p className="mt-1 text-[22px] font-black text-[#bd0014]">LKR {totalWithShipping.toLocaleString()}</p></div>
             </div>
             <div className="border-t border-[#e9bcb7] px-6 py-5">
@@ -1774,8 +1780,8 @@ function PurchaseOrdersView({
               <div className="h-[6px] overflow-hidden rounded-full bg-[#e9e8e7]"><div className="h-full rounded-full bg-[#f59e0b]" style={{ width: `${budgetProgress}%` }} /></div>
             </div>
             <div className="flex flex-col gap-2 border-t border-[#e9bcb7] px-6 py-5 sm:flex-row sm:justify-end">
-              <button type="button" onClick={finalizeOrder} className="flex h-11 items-center justify-center rounded-[4px] bg-[#bd0014] px-6 text-[11px] font-bold uppercase tracking-[0.55px] text-white">Finalize the order</button>
-              <button type="button" onClick={() => onAction('Purchase order saved as draft.')} className="flex h-11 items-center justify-center rounded-[4px] border border-[#e9bcb7] px-6 text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">Save as draft</button>
+              <button type="button" disabled={isSaving || !rows.length} onClick={() => void saveOrder('SUBMITTED')} className="flex h-11 items-center justify-center rounded-[4px] bg-[#bd0014] px-6 text-[11px] font-bold uppercase tracking-[0.55px] text-white">{isSaving ? 'Saving...' : 'Finalize the order'}</button>
+              <button type="button" disabled={isSaving || !rows.length} onClick={() => void saveOrder('DRAFT')} className="flex h-11 items-center justify-center rounded-[4px] border border-[#e9bcb7] px-6 text-[11px] font-bold uppercase tracking-[0.55px] text-[#1b1c1c]">Save as draft</button>
             </div>
           </div>
         </div>
@@ -2206,7 +2212,9 @@ export default function App() {
   const [isRegistering, setIsRegistering] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false)
-  const [addedPurchaseRows, setAddedPurchaseRows] = useState<typeof poRows>([])
+  const [addedPurchaseRows, setAddedPurchaseRows] = useState<DraftLine[]>([])
+  const [draftShippingCost, setDraftShippingCost] = useState('0')
+  const [isSavingPurchase, setIsSavingPurchase] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -2240,11 +2248,7 @@ export default function App() {
       return ''
     }
   })
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    { id: 1, title: 'Low stock alert', detail: 'Outer Mirror Glass is below safety threshold in Navala Central.', time: '2 min ago', read: false },
-    { id: 2, title: 'Transfer approved', detail: 'Workshop #008 transfer was approved for L Side Mirror.', time: '18 min ago', read: false },
-    { id: 3, title: 'Forecast update', detail: 'New demand spike detected for Corolla Cross wheel arch parts.', time: '1 hour ago', read: true },
-  ])
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -2451,7 +2455,7 @@ export default function App() {
   }
 
   const handleNewOrderSave = (details: NewOrderDetail[]) => {
-    const completedDetails = details.filter(detail => detail.supplier.trim() && detail.vehicle.trim() && detail.part.trim() && Number(detail.quantity) > 0 && Number(detail.unitPrice) >= 0)
+    const completedDetails = details.filter(detail => detail.supplier.trim() && detail.vehicle.trim() && detail.part.trim() && Number.isInteger(Number(detail.quantity)) && Number(detail.quantity) > 0 && detail.unitPrice.trim() !== '' && Number.isFinite(Number(detail.unitPrice)) && Number(detail.unitPrice) >= 0)
     if (completedDetails.length !== details.length) {
       setStatusMessage('Complete every new order detail row before saving.')
       return
@@ -2466,11 +2470,13 @@ export default function App() {
         part: detail.part.trim(),
         qty: Number(detail.quantity),
         unitPrice: Number(detail.unitPrice),
-        demand: 'MEDIUM',
+        id: crypto.randomUUID(),
+        source: { kind: 'manual' as const },
       })),
     ])
     setStatusMessage(`${completedDetails.length} purchase order detail${completedDetails.length > 1 ? 's' : ''} created. Total: LKR ${total.toLocaleString()}.`)
     setIsNewOrderOpen(false)
+    setSearchTerm('')
     setView('purchase')
   }
 
@@ -2510,6 +2516,7 @@ export default function App() {
       {isSupportOpen && <SupportModal onClose={() => setIsSupportOpen(false)} onSubmit={handleSupportRequest} />}
       {isNewOrderOpen && <NewOrderModal onClose={() => setIsNewOrderOpen(false)} onSubmit={handleNewOrderSave} />}
       <div className={`min-w-0 flex-1 overflow-y-auto ${isNightMode ? 'bg-[#0b1220]' : 'bg-[#fbf9f8]'}`}>
+        <DatabaseBanner />
         {statusMessage && (
           <div className={`border-b px-4 py-2 text-[12px] font-medium ${isNightMode ? 'border-[#374151] bg-[#111827] text-[#fca5a5]' : 'border-[#e9bcb7] bg-[#fff7f5] text-[#bd0014]'}`}>
             {statusMessage}
@@ -2521,6 +2528,12 @@ export default function App() {
             onSearchChange={setSearchTerm}
             onAction={setStatusMessage}
             onClear={() => setSearchTerm('')}
+            onAddBundle={lines => {
+              setAddedPurchaseRows(current => [...current, ...lines])
+              setSearchTerm('')
+              setView('purchase')
+              setStatusMessage(`${lines.length} selected bundle lines added to the draft. Complete supplier, vehicle compatibility and prices before saving.`)
+            }}
             userName={userProfile.fullName}
             userRole={userProfile.role}
             warehouseName={userProfile.warehouse}
@@ -2588,6 +2601,12 @@ export default function App() {
             onSearchChange={setSearchTerm}
             onAction={setStatusMessage}
             addedRows={addedPurchaseRows}
+            onRowsChange={setAddedPurchaseRows}
+            shippingCost={draftShippingCost}
+            setShippingCost={setDraftShippingCost}
+            isSaving={isSavingPurchase}
+            setIsSaving={setIsSavingPurchase}
+            onOrderSaved={ids => setAddedPurchaseRows(current => current.filter(row => !ids.includes(row.id)))}
             userName={userProfile.fullName}
             userRole={userProfile.role}
             warehouseName={userProfile.warehouse}

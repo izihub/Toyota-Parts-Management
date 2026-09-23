@@ -443,66 +443,6 @@ function Card1() {
   );
 }
 
-function Paragraph4() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Paragraph">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-start justify-between relative size-full">
-        <div className="[word-break:break-word] flex flex-col font-['Inter:Bold',sans-serif] font-bold justify-center leading-[0] not-italic relative shrink-0 text-[#5f5e5e] text-[11px] tracking-[0.55px] whitespace-nowrap">
-          <p className="leading-[16px]">Pending AI Predictions</p>
-        </div>
-        <div className="h-[21px] relative shrink-0 w-[20px]" data-name="Icon">
-          <svg className="absolute block inset-0 size-full" fill="none" height="21" preserveAspectRatio="none" viewBox="0 0 20 21" width="20">
-            <path d={svgPaths.p15e38e00} fill="#00619E" id="Icon" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Container23() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="[word-break:break-word] flex flex-col font-['Inter:Semi_Bold',sans-serif] font-semibold justify-center leading-[0] not-italic relative shrink-0 text-[#1b1c1c] text-[24px] tracking-[-0.48px] w-full">
-        <p className="leading-[32px]">1,894</p>
-      </div>
-    </div>
-  );
-}
-
-function Container24() {
-  return (
-    <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-name="Container">
-      <div className="[word-break:break-word] flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center leading-[0] not-italic relative shrink-0 text-[#5f5e5e] text-[13px] w-full">
-        <p className="leading-[18px]">Awaiting human verification</p>
-      </div>
-    </div>
-  );
-}
-
-function Container22() {
-  return (
-    <div className="relative shrink-0 w-full" data-name="Container">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col gap-[4px] items-start relative size-full">
-        <Container23 />
-        <Container24 />
-      </div>
-    </div>
-  );
-}
-
-function Card2() {
-  return (
-    <div className="bg-white flex-[1_0_0] h-[128px] min-w-px relative" data-name="Card 3">
-      <div aria-hidden className="absolute border border-[#e9bcb7] border-solid inset-0 pointer-events-none" />
-      <div className="content-stretch flex flex-col items-start justify-between p-[17px] relative size-full">
-        <Paragraph4 />
-        <Container22 />
-      </div>
-    </div>
-  );
-}
-
 function Paragraph5() {
   return (
     <div className="relative shrink-0 w-full" data-name="Paragraph">
@@ -566,7 +506,6 @@ function MetricCardsBentoGrid() {
     <div className="content-stretch flex gap-[16px] items-start justify-center relative shrink-0 w-full" data-name="Metric Cards Bento Grid">
       <Card />
       <Card1 />
-      <Card2 />
       <Card3 />
     </div>
   );

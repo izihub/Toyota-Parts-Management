@@ -1,0 +1,31 @@
+{
+  "scope_id": "toyota-demo-stock-v1",
+  "source_database": "api/toyota_parts.db",
+  "target_database": "api/demo_parts.db",
+  "warehouse": "Demo Warehouse",
+  "identity_policy": "one synthetic SKU per canonical part, exact model and manufacture year",
+  "fitment_status": "synthetic_assumption_not_verified_for_procurement",
+  "source_claims": [
+    {
+      "accident_id": "ACC-00000000003",
+      "model": "VITZ KSP130",
+      "make_year": 2015,
+      "parts": ["DICKY DOOR", "LH TAIL LAMP", "REAR BUMPER", "TAIL DOOR"],
+      "scenario": "fully_stocked"
+    },
+    {
+      "accident_id": "ACC-00000000005",
+      "model": "AQUA NHP10",
+      "make_year": 2013,
+      "parts": ["DICKY DOOR", "LH TAIL LAMP", "REAR BUMPER", "RH TAIL LAMP"],
+      "scenario": "low_stock"
+    },
+    {
+      "accident_id": "ACC-00000000006",
+      "model": "VITZ KSP130",
+      "make_year": 2020,
+      "parts": ["FRONT BUMPER", "RH HEAD LAMP"],
+      "scenario": "stockout"
+    }
+  ]
+}
