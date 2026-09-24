@@ -1,5 +1,87 @@
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS forecast_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    request_key TEXT NOT NULL UNIQUE,
+    data_source TEXT NOT NULL CHECK(data_source IN ('LIVE','HISTORICAL','SYNTHETIC')),
+    created_at TEXT NOT NULL,
+    method_version TEXT NOT NULL,
+    forecast_json TEXT NOT NULL,
+    evaluation_json TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS forecast_results (
+    run_id INTEGER NOT NULL REFERENCES forecast_runs(id),
+    catalog_item_id INTEGER NOT NULL REFERENCES catalog_items(id),
+    starts_at TEXT NOT NULL,
+    ends_at TEXT NOT NULL,
+    units REAL CHECK(units IS NULL OR units >= 0),
+    status TEXT NOT NULL,
+    PRIMARY KEY(run_id,catalog_item_id,starts_at)
+);
+
+CREATE TABLE IF NOT EXISTS historical_demand_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dataset TEXT NOT NULL,
+    source_claim_id TEXT NOT NULL,
+    model TEXT NOT NULL,
+    make_year INTEGER NOT NULL CHECK(make_year BETWEEN 1886 AND 2100),
+    period_month TEXT NOT NULL CHECK(length(period_month)=7 AND period_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]' AND substr(period_month,6,2) BETWEEN '01' AND '12'),
+    input_hash TEXT NOT NULL,
+    file_hash TEXT NOT NULL,
+    recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(dataset, source_claim_id)
+);
+CREATE TABLE IF NOT EXISTS historical_part_occurrences (
+    record_id INTEGER NOT NULL REFERENCES historical_demand_records(id),
+    part_name TEXT NOT NULL CHECK(length(trim(part_name)) > 0),
+    PRIMARY KEY(record_id, part_name)
+);
+CREATE INDEX IF NOT EXISTS historical_demand_month ON historical_demand_records(dataset, period_month);
+
+-- Requested demand events, not prediction occurrences or stock movements.
+CREATE TABLE IF NOT EXISTS demand_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_key TEXT NOT NULL UNIQUE CHECK(length(trim(event_key)) > 0),
+    catalog_item_id INTEGER NOT NULL REFERENCES catalog_items(id),
+    warehouse_id INTEGER REFERENCES warehouses(id),
+    source_line_id INTEGER REFERENCES fulfillment_order_lines(id),
+    data_source TEXT NOT NULL CHECK(data_source IN ('LIVE', 'HISTORICAL', 'SYNTHETIC')),
+    source_reference TEXT NOT NULL CHECK(length(trim(source_reference)) > 0),
+    event_type TEXT NOT NULL CHECK(event_type IN ('REQUESTED', 'CANCELLED', 'CORRECTION')),
+    quantity_delta INTEGER NOT NULL CHECK(typeof(quantity_delta) = 'integer' AND quantity_delta != 0),
+    occurred_at TEXT NOT NULL CHECK(length(occurred_at) = 20 AND occurred_at GLOB '????-??-??T??:??:??Z' AND datetime(occurred_at) IS NOT NULL),
+    recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    related_event_id INTEGER REFERENCES demand_events(id),
+    reason TEXT,
+    CHECK((event_type = 'REQUESTED' AND quantity_delta > 0 AND related_event_id IS NULL) OR
+          (event_type = 'CANCELLED' AND quantity_delta < 0 AND related_event_id IS NOT NULL) OR
+          (event_type = 'CORRECTION' AND related_event_id IS NOT NULL)),
+    CHECK(event_type = 'REQUESTED' OR (reason IS NOT NULL AND length(trim(reason)) > 0))
+);
+CREATE INDEX IF NOT EXISTS demand_events_series ON demand_events(data_source, catalog_item_id, occurred_at);
+CREATE INDEX IF NOT EXISTS demand_events_source_line ON demand_events(source_line_id);
+CREATE TRIGGER IF NOT EXISTS demand_events_no_update BEFORE UPDATE ON demand_events
+BEGIN SELECT RAISE(ABORT, 'Demand events are immutable; append a correction'); END;
+CREATE TRIGGER IF NOT EXISTS demand_events_no_delete BEFORE DELETE ON demand_events
+BEGIN SELECT RAISE(ABORT, 'Demand events are immutable; append a correction'); END;
+
+-- Half-open UTC observation intervals [starts_at, ends_at); global or warehouse scope.
+CREATE TABLE IF NOT EXISTS demand_coverage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    coverage_key TEXT NOT NULL UNIQUE CHECK(length(trim(coverage_key)) > 0),
+    catalog_item_id INTEGER NOT NULL REFERENCES catalog_items(id),
+    warehouse_id INTEGER REFERENCES warehouses(id),
+    data_source TEXT NOT NULL CHECK(data_source IN ('LIVE', 'HISTORICAL', 'SYNTHETIC')),
+    source_reference TEXT NOT NULL CHECK(length(trim(source_reference)) > 0),
+    starts_at TEXT NOT NULL CHECK(length(starts_at) = 20 AND starts_at GLOB '????-??-??T??:??:??Z' AND datetime(starts_at) IS NOT NULL),
+    ends_at TEXT NOT NULL CHECK(length(ends_at) = 20 AND ends_at GLOB '????-??-??T??:??:??Z' AND datetime(ends_at) IS NOT NULL),
+    status TEXT NOT NULL CHECK(status IN ('COMPLETE', 'GAP')),
+    recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
+    notes TEXT,
+    CHECK(ends_at > starts_at)
+);
+CREATE INDEX IF NOT EXISTS demand_coverage_series ON demand_coverage(data_source, catalog_item_id, starts_at, ends_at);
+
 CREATE TABLE IF NOT EXISTS import_batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     dataset TEXT NOT NULL,

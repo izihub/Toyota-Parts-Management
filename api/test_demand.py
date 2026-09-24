@@ -7,6 +7,23 @@ from . import database, main
 
 
 class DemandSummaryTests(unittest.TestCase):
+    def test_forecast_run_api(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(database, 'DATABASE_PATH', Path(directory) / 'test.db'), TestClient(main.app) as client:
+            self.assertEqual(client.get('/api/demand-forecast-runs').json(), [])
+            payload = {'request_key': 'test-run'}
+            result = client.post('/api/demand-forecast-runs', json=payload)
+            self.assertEqual(result.status_code, 200)
+            saved = result.json()
+            self.assertEqual(saved['forecast']['status'], 'NO_CATALOG')
+            self.assertIsNone(saved['evaluation']['mae'])
+            self.assertEqual(client.post('/api/demand-forecast-runs', json=payload).json(), saved)
+            self.assertEqual(client.get(f"/api/demand-forecast-runs/{saved['id']}").json(), saved)
+            self.assertEqual(len(client.get('/api/demand-forecast-runs').json()), 1)
+            self.assertEqual(client.post('/api/demand-forecast-runs', json={**payload, 'data_source': 'SYNTHETIC'}).status_code, 409)
+            self.assertEqual(client.post('/api/demand-forecast-runs', json={'request_key': ' '}).status_code, 422)
+            self.assertEqual(client.get('/api/demand-forecast-runs/999').status_code, 404)
+            self.assertEqual(client.get('/api/demand-forecast-runs?limit=0').status_code, 422)
+
     def test_empty_and_multiwarehouse_demand_without_double_counting(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(database, 'DATABASE_PATH', Path(directory) / 'test.db'), TestClient(main.app) as client:
             empty = client.get('/api/demand-summary')

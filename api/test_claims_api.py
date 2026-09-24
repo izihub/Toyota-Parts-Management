@@ -197,6 +197,8 @@ class ClaimsApiTests(unittest.TestCase):
         self.assertEqual(self.client.post(url, json=body).json(), first.json())
         row = self.client.get('/api/fulfillment').json()[0]
         self.assertEqual(len(row['parts']), 2)
+        with database.get_connection() as c:
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM demand_events').fetchone()[0], 2)
         self.assertTrue(row['parts'][1]['source']['rule_version'])
         self.assertFalse(any(s['part_name'] == 'RH FOG LAMP' for s in self.client.get(url).json()))
 
@@ -255,6 +257,31 @@ class ClaimsApiTests(unittest.TestCase):
         self.assertEqual(final['workshops'][0]['delivered'], 1)
         self.assertEqual(self.client.get('/api/fulfillment').json()[0]['accident_id'], claim)
 
+    def test_demand_capture_once_atomic_and_source_classification(self):
+        from .demand_service import record_requested_demand
+        order = self.logistics_order()
+        with database.get_connection() as c:
+            event = c.execute('SELECT * FROM demand_events').fetchone()
+            self.assertEqual((event['quantity_delta'], event['data_source']), (2, 'LIVE'))
+            record_requested_demand(c, event['source_line_id'])
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM demand_events').fetchone()[0], 1)
+        self.assertEqual(self.client.delete(f'/api/fulfillment/{order}').status_code, 409)
+        self.logistics_stock()
+        self.assertEqual(self.client.post(f'/api/fulfillment/{order}/reserve', json={'warehouse_name': 'Main Warehouse'}).status_code, 200)
+        self.assertEqual(self.client.patch(f'/api/fulfillment/{order}', params={'status': 'IN TRANSIT'}).status_code, 200)
+        with database.get_connection() as c:
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM demand_events').fetchone()[0], 1)
+        response = self.client.post('/api/fulfillment', json={'workshop_name': 'Workshop', 'parts': [
+            {'part_name': 'LH FOG LAMP', 'sku': 'LOG-A', 'vehicle_model': 'AQUA NHP10', 'make_year': 2013, 'quantity': 1},
+            {'part_name': 'INVALID', 'sku': 'MISSING', 'quantity': 1}]})
+        self.assertEqual(response.status_code, 404)
+        with database.get_connection() as c:
+            self.assertEqual(c.execute('SELECT COUNT(*) FROM demand_events').fetchone()[0], 1)
+            c.execute("INSERT INTO synthetic_stock_generations(generation_id,seed,config_json,config_hash,source_snapshot_hash,warehouse_id) VALUES ('demo',42,'{}','c','s',1)")
+        self.logistics_order()
+        with database.get_connection() as c:
+            self.assertEqual(c.execute('SELECT data_source FROM demand_events ORDER BY id DESC').fetchone()[0], 'SYNTHETIC')
+
     def create_sku(self, sku, part, model='AQUA NHP10', year=2013):
         response = self.client.post('/api/catalog', json={'sku': sku, 'part_name': part, 'display_name': sku, 'fitments': [{'model': model, 'make_year': year}]})
         self.assertEqual(response.status_code, 200, response.text)
@@ -277,6 +304,8 @@ class ClaimsApiTests(unittest.TestCase):
 
     def test_claim_conversion_fitment_atomicity_replay_and_traceability(self):
         claim_id = self.intake().json()['accident_id']
+        with database.get_connection() as c:
+            c.execute("UPDATE claims SET source_type='TRAINING_DATASET' WHERE accident_id=?", (claim_id,))
         self.create_sku('BUMPER-A', 'FRONT BUMPER')
         self.create_sku('BONNET-WRONG', 'BONNET', 'RAV4 XA50', 2024)
         self.create_sku('BONNET-A', 'BONNET')
@@ -293,6 +322,9 @@ class ClaimsApiTests(unittest.TestCase):
         repeated = self.client.post(url, json={**payload, 'lines': list(reversed(payload['lines']))})
         self.assertEqual(repeated.json()['id'], first.json()['id'])
         self.assertTrue(repeated.json()['replayed'])
+        with database.get_connection() as c:
+            events = c.execute('SELECT data_source FROM demand_events').fetchall()
+            self.assertEqual([e[0] for e in events], ['HISTORICAL', 'HISTORICAL'])
         payload['lines'][0]['quantity'] = 2
         self.assertEqual(self.client.post(url, json=payload).status_code, 409)
         orders = self.client.get('/api/fulfillment').json()

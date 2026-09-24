@@ -14,3 +14,5 @@ imports/claims-*.json
 imports/claims-*.log
 api/backups/
 imports/synthetic-stock-*.json
+imports/demand-history-*.json
+imports/demand-history-*.log

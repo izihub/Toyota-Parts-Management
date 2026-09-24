@@ -1,8 +1,43 @@
 """Current operational demand; no future-demand estimates are fabricated."""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
+from typing import Literal
+from .forecast_runs import save_run, load_run
 from .database import get_connection
+from .forecasting import baseline
 
 router = APIRouter(prefix='/api')
+
+
+class ForecastRunRequest(BaseModel):
+    request_key: str = Field(min_length=1, max_length=128, pattern=r'^\S+$')
+    data_source: Literal['LIVE', 'HISTORICAL', 'SYNTHETIC'] = 'LIVE'
+
+
+@router.post('/demand-forecast-runs')
+def create_forecast_run(request: ForecastRunRequest):
+    with get_connection() as c:
+        c.execute('BEGIN IMMEDIATE')
+        try:
+            return save_run(c, request.request_key, data_source=request.data_source)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get('/demand-forecast-runs')
+def list_forecast_runs(limit: int = Query(default=20, ge=1, le=100)):
+    with get_connection() as c:
+        return [dict(row) for row in c.execute('''SELECT id,created_at,data_source,method_version
+            FROM forecast_runs ORDER BY id DESC LIMIT ?''', (limit,))]
+
+
+@router.get('/demand-forecast-runs/{run_id}')
+def get_forecast_run(run_id: int):
+    with get_connection() as c:
+        result = load_run(c, run_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail='Forecast run not found')
+        return result
 
 
 @router.get('/demand-summary')
@@ -65,7 +100,7 @@ def demand_summary():
             'stockout_records': sum(r['stock_status'] == 'STOCKOUT' for r in stock),
             'low_availability_records': sum(r['stock_status'] == 'LOW' for r in stock),
             'sku_rows': sku_rows, 'warehouse_stock': stock,
-            'forecast': {'status': 'NOT_IMPLEMENTED', 'units': None},
+            'forecast': baseline(c),
             'notes': ['Approved predictions count part occurrences, not requested units.',
                       'Unreserved demand is global; an unreserved order has no assigned warehouse.',
                       'Global shortage is a pooled comparison, not a guarantee of single-warehouse fulfillment.',

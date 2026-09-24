@@ -1,6 +1,7 @@
 import DatabaseBanner from './DatabaseBanner'
 import ApprovedPredictions from './ApprovedPredictions'
 import OperationalMetrics from './OperationalMetrics'
+import DemandForecastDetails from './DemandForecastDetails'
 import FulfillmentActionsModal from './FulfillmentActionsModal'
 import InventoryOperations from './InventoryOperations'
 import React, { useState } from 'react'
@@ -104,6 +105,19 @@ function IconBike() {
   return (
     <svg width="18" height="19" viewBox="0 0 18.0318 18.5059" fill="none">
       <path d={svgPaths.p1154e780} fill="currentColor" />
+    </svg>
+  )
+}
+
+function CardGlyph({ kind }: { kind: 'queue' | 'parts' | 'inspection' | 'selected' | 'workshop' | 'transit' }) {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === 'queue' && <><rect x="5" y="4" width="14" height="16" rx="2" /><path d="M9 4V2h6v2M9 9h6M9 13h4" /></>}
+      {kind === 'parts' && <><path d="m12 3 8 4-8 4-8-4 8-4Z" /><path d="m4 12 8 4 8-4M4 17l8 4 8-4" /></>}
+      {kind === 'inspection' && <><path d="M12 3 22 20H2L12 3Z" /><path d="M12 9v4M12 17h.01" /></>}
+      {kind === 'selected' && <><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></>}
+      {kind === 'workshop' && <><path d="M4 20V8l8-4 8 4v12" /><path d="M8 20v-6h8v6M8 9h.01M12 9h.01M16 9h.01" /></>}
+      {kind === 'transit' && <><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></>}
     </svg>
   )
 }
@@ -368,7 +382,7 @@ function TopNav({
     : 'border-[#e9bcb7] bg-white text-[#1b1c1c]'
 
   return (
-    <header className={`z-10 flex h-auto flex-shrink-0 flex-col gap-3 border-b px-4 py-3 lg:h-12 lg:flex-row lg:items-center lg:justify-between lg:py-0 ${headerClasses}`}>
+    <header className={`sticky top-0 z-30 flex h-auto flex-shrink-0 flex-col gap-3 border-b px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.08)] lg:h-12 lg:flex-row lg:items-center lg:justify-between lg:py-0 ${headerClasses}`}>
       <h1 className="text-[18px] font-black tracking-[-0.48px] text-[#bd0014] sm:text-[20px] lg:text-[24px]">Toyota Parts Management</h1>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-6">
         <div className="relative flex items-center w-full lg:w-auto">
@@ -512,13 +526,13 @@ function DemandForecastView({
   const loadStock = () => apiRequest<Array<{part_name: string; part_number: string | null; quantity: number; reorder_level: number; fitments: Array<{model: string; make_year: number}>; identity_status: string; reserved_quantity?: number; available_quantity?: number; warehouse_name: string; synthetic?: boolean}>>('/api/stock')
     .then(items => setStockRows(items.map(item => ({
       reserved: item.reserved_quantity ?? null, available: item.available_quantity ?? null, warehouse: item.warehouse_name,
-      fitments: item.fitments, img: '📦', name: `${item.synthetic ? '[SYNTHETIC] ' : ''}${item.part_name}`, pn: item.part_number || '—', compat: item.fitments.length ? item.fitments.map(f => `${f.model} (${f.make_year})`).join(', ') : 'Legacy - fitment not mapped',
+      fitments: item.fitments, img: '📦', name: `${item.synthetic ? '[SYNTHETIC] ' : ''}${item.part_name}`, pn: item.part_number || '—', compat: item.fitments.length ? item.fitments.map(f => `${f.model} (${f.make_year})`).join(', ') : item.identity_status === 'CATALOGED' ? 'Fitment not specified' : 'Legacy - fitment not mapped',
       vehicleModel: item.fitments[0]?.model || 'Unmapped', makeYear: item.fitments[0]?.make_year || 0, exteriorPart: 'Other',
       monthYear: new Date().toLocaleString('en', { month: 'short', year: 'numeric' }),
       demand: item.reorder_level, stock: item.quantity,
       stockColor: item.quantity <= item.reorder_level ? '#bd0014' : '#1b1c1c',
       health: item.reorder_level ? Math.min(100, Math.round(item.quantity / item.reorder_level * 100)) : 100,
-      conf: 'LIVE', confColor: '#15803d', confBg: '#f0fdf4',
+      conf: item.synthetic ? 'SYNTHETIC' : 'LIVE', confColor: item.synthetic ? '#92400e' : '#15803d', confBg: item.synthetic ? '#fffbeb' : '#f0fdf4',
     }))))
     .catch(error => onAction(`Could not load stock: ${String(error)}`))
   const loadDemandMetrics = () => apiRequest<{ delivery_rate: number | null }>('/api/metrics')
@@ -648,12 +662,16 @@ function DemandForecastView({
         <CatalogManager onUpdated={() => void loadStock()} />
 
         <div className="mb-4 grid gap-4 md:grid-cols-2">
-          <div className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
+          <div className="relative overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white p-4 pl-5 shadow-[0_8px_24px_rgba(189,0,20,0.06)]">
+            <div className="absolute inset-y-0 left-0 w-1 bg-[#bd0014]" />
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Low Stock Alerts</p>
-              <svg width="22" height="19" viewBox="0 0 22 19" fill="none" aria-hidden="true">
-                <path d="M11 0L21.5 18H0.5L11 0Z" fill="#BA1A1A" />
-              </svg>
+              <span className="flex size-9 items-center justify-center rounded-[4px] bg-[#fff7f5] text-[#bd0014]" aria-hidden="true">
+                <svg width="20" height="18" viewBox="0 0 22 19" fill="none">
+                  <path d="M11 0L21.5 18H0.5L11 0Z" fill="currentColor" />
+                  <path d="M11 5v6M11 14.5v.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </span>
             </div>
 
             <div className="mt-4 flex items-end gap-2">
@@ -669,12 +687,15 @@ function DemandForecastView({
             </div>
           </div>
 
-          <div className="rounded-[4px] border border-[#e9bcb7] bg-white p-4">
+          <div className="relative overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white p-4 pl-5 shadow-[0_8px_24px_rgba(16,185,129,0.08)]">
+            <div className="absolute inset-y-0 left-0 w-1 bg-[#10b981]" />
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">Fulfillment Rate</p>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-[#1b1c1c]" aria-hidden="true">
-                <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM8.5 14.5L4.5 10.5L5.7 9.3L8.5 12.1L14.3 6.3L15.5 7.5L8.5 14.5Z" fill="currentColor" />
-              </svg>
+              <span className="flex size-9 items-center justify-center rounded-[4px] bg-[#ecfdf5] text-[#059669]" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM8.5 14.5L4.5 10.5L5.7 9.3L8.5 12.1L14.3 6.3L15.5 7.5L8.5 14.5Z" fill="currentColor" />
+                </svg>
+              </span>
             </div>
 
             <div className="mt-4 text-[32px] font-semibold leading-[32px] tracking-[-0.48px] text-[#1b1c1c]">
@@ -690,7 +711,7 @@ function DemandForecastView({
           </div>
         </div>
 
-        <OperationalMetrics />
+        <DemandForecastDetails />
         <ApprovedPredictions />
 
         {/* Filters */}
@@ -1196,13 +1217,17 @@ function PredictionQueueView({
         {/* Bottom stats */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Pending Claims', value: String(queueRows.length), sub: 'Awaiting review', subColor: '#5f5e5e', border: '#e9bcb7' },
-            { label: 'Suggested Parts', value: String(queueRows.reduce((sum, row) => sum + row.parts.length, 0)), sub: 'Unreviewed suggestions', subColor: '#5f5e5e', border: '#e9bcb7' },
-            { label: 'Manual Inspection', value: String(queueRows.filter(row => row.parts.length === 0).length), sub: 'No parts passed thresholds', subColor: '#bd0014', border: '#e9bcb7' },
-            { label: 'Selected Claims', value: String(selectedIds.length), sub: 'Whole-claim review selected', subColor: '#5f5e5e', border: '#e9bcb7' },
+            { label: 'Pending Claims', value: String(queueRows.length), sub: 'Awaiting review', subColor: '#92400e', accent: '#d97706', icon: 'queue' as const, iconTone: 'bg-[#fffbeb] text-[#b45309]' },
+            { label: 'Suggested Parts', value: String(queueRows.reduce((sum, row) => sum + row.parts.length, 0)), sub: 'Unreviewed suggestions', subColor: '#1d4ed8', accent: '#2563eb', icon: 'parts' as const, iconTone: 'bg-[#eff6ff] text-[#2563eb]' },
+            { label: 'Manual Inspection', value: String(queueRows.filter(row => row.parts.length === 0).length), sub: 'No parts passed thresholds', subColor: '#bd0014', accent: '#bd0014', icon: 'inspection' as const, iconTone: 'bg-[#fff7f5] text-[#bd0014]' },
+            { label: 'Selected Claims', value: String(selectedIds.length), sub: 'Whole-claim review selected', subColor: '#047857', accent: '#10b981', icon: 'selected' as const, iconTone: 'bg-[#ecfdf5] text-[#059669]' },
           ].map(s => (
-            <div key={s.label} className="rounded-[4px] bg-white p-4" style={{ border: `1px solid ${s.border}` }}>
-              <p className="mb-1 text-[13px] text-[#5f5e5e]">{s.label}</p>
+            <div key={s.label} className="relative overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white p-4 pl-5 shadow-[0_6px_18px_rgba(27,28,28,0.04)]">
+              <div className="absolute inset-y-0 left-0 w-1" style={{ backgroundColor: s.accent }} />
+              <div className="flex items-start justify-between gap-3">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.45px] text-[#5f5e5e]">{s.label}</p>
+                <span className={`flex size-9 shrink-0 items-center justify-center rounded-[4px] ${s.iconTone}`}><CardGlyph kind={s.icon} /></span>
+              </div>
               <p className="text-[28px] font-black leading-none text-[#1b1c1c]">{s.value}</p>
               <p className="mt-2 text-[11px] font-medium" style={{ color: s.subColor }}>{s.sub}</p>
             </div>
@@ -1491,17 +1516,24 @@ function InventoryFulfillmentView({
         {/* Workshop cards */}
         <div className="mb-6 flex gap-4 overflow-x-auto pb-2">
           {workshopCards.map(w => (
-            <div key={w.name} className="min-w-[280px] flex-1 rounded-[4px] border border-[#e9bcb7] bg-white p-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">{w.org}</p>
-              <p className="mt-1 text-[18px] font-black tracking-[-0.18px] text-[#1b1c1c]">{w.name}</p>
+            <div key={w.name} className="relative min-w-[280px] flex-1 overflow-hidden rounded-[4px] border border-[#e9bcb7] bg-white p-4 pl-5 shadow-[0_6px_18px_rgba(37,99,235,0.06)]">
+              <div className="absolute inset-y-0 left-0 w-1 bg-[#2563eb]" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.55px] text-[#5f5e5e]">{w.org}</p>
+                  <p className="mt-1 text-[18px] font-black tracking-[-0.18px] text-[#1b1c1c]">{w.name}</p>
+                </div>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-[4px] bg-[#eff6ff] text-[#2563eb]"><CardGlyph kind="workshop" /></span>
+              </div>
               <div className="mt-3 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] text-[#5f5e5e]">Pending Requests</p>
                   <p className="text-[24px] font-black text-[#1b1c1c]">{fulfillmentRows.filter(row => row.workshop === w.name && row.status === 'PENDING').length}</p>
                 </div>
+                <span className="flex size-8 items-center justify-center rounded-[4px] bg-[#fffbeb] text-[#b45309]"><CardGlyph kind="queue" /></span>
               </div>
               <div className="mt-3 flex items-center gap-2">
-                <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M0 2h10v8H0V2zM10 4l6 3-6 3V4z" fill="#3b82f6"/></svg>
+                <span className="flex size-8 items-center justify-center rounded-[4px] bg-[#eff6ff] text-[#2563eb]"><CardGlyph kind="transit" /></span>
                 <span className="text-[11px] font-bold tracking-[0.55px] text-[#3b82f6]">IN TRANSIT: {fulfillmentRows.filter(row => row.workshop === w.name && row.status === 'IN TRANSIT').length} orders</span>
               </div>
             </div>

@@ -1,4 +1,5 @@
 """Transactional inventory allocation, dispatch, receipt and companion additions."""
+from .demand_service import record_requested_demand
 import hashlib
 import json
 import math
@@ -143,6 +144,7 @@ def map_line(order_id: int, line_id: int, request: MapLineRequest):
             raise HTTPException(400, 'Selected fitment must match the recorded vehicle')
         item = require_catalog(connection, request.sku, line['part_name'], model, request.make_year)
         connection.execute('UPDATE fulfillment_order_lines SET catalog_item_id = ?, vehicle_model = ?, make_year = ? WHERE id = ?', (item['id'], model, request.make_year, line_id))
+        record_requested_demand(connection, line_id, use_order_date=True)
         return {'mapped': line_id}
 
 
@@ -214,6 +216,7 @@ def add_companion(order_id: int, request: CompanionRequest):
         item = require_catalog(connection, request.sku, request.part_name, match['vehicle_model'], match['make_year'])
         line_id = connection.execute('''INSERT INTO fulfillment_order_lines(fulfillment_order_id, part_name, vehicle_model, make_year, quantity, unit_price, catalog_item_id, source_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', (order_id, request.part_name, match['vehicle_model'], match['make_year'], request.quantity, request.unit_price, item['id'], json.dumps(match))).lastrowid
+        record_requested_demand(connection, line_id)
         response = {'line_id': line_id}
         record_request(connection, key, fingerprint, response)
         return response

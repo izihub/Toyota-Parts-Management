@@ -15,6 +15,7 @@ from .ml_contract import validate_model, build_sample, positive_probabilities
 from .catalog import router as catalog_router, require_catalog
 from .metrics import router as metrics_router
 from .demand import router as demand_router
+from .demand_service import record_requested_demand
 from .logistics import router as logistics_router, transition, movement
 
 app = FastAPI(title="Toyota Claims Intake AI")
@@ -29,7 +30,8 @@ def environment():
     from .database import DATABASE_PATH
     with get_connection() as connection:
         synthetic = connection.execute('SELECT COUNT(*) FROM synthetic_stock_generations').fetchone()[0] > 0
-    return {'database_name': DATABASE_PATH.name, 'contains_synthetic_stock': synthetic}
+        synthetic_demand = connection.execute("SELECT EXISTS(SELECT 1 FROM demand_events WHERE data_source='SYNTHETIC')").fetchone()[0] > 0
+    return {'database_name': DATABASE_PATH.name, 'contains_synthetic_stock': synthetic, 'contains_synthetic_demand': synthetic_demand}
 
 
 @app.on_event("startup")
@@ -321,10 +323,11 @@ def create_fulfillment(request: FulfillmentRequest):
             if not part.part_name.strip() or part.quantity <= 0 or part.unit_price < 0:
                 raise HTTPException(400, "Invalid fulfillment part")
             catalog_item = require_catalog(connection, part.sku, part.part_name, part.vehicle_model, part.make_year) if part.sku else None
-            connection.execute("""
+            line_cursor = connection.execute("""
                 INSERT INTO fulfillment_order_lines(fulfillment_order_id, part_name, vehicle_model, make_year, quantity, unit_price, catalog_item_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (cursor.lastrowid, part.part_name.strip().upper(), part.vehicle_model.strip().upper(), part.make_year, part.quantity, part.unit_price, catalog_item['id'] if catalog_item else None))
+            record_requested_demand(connection, line_cursor.lastrowid)
     return {"id": f"fulfill-{cursor.lastrowid}"}
 
 
@@ -342,6 +345,8 @@ def delete_fulfillment(order_id: int):
             raise HTTPException(409, 'Orders with inventory history or dispatch cannot be deleted')
         if connection.execute("SELECT 1 FROM claim_conversions WHERE fulfillment_order_id = ?", (order_id,)).fetchone():
             raise HTTPException(409, "A claim-linked fulfillment order cannot be deleted")
+        if connection.execute('SELECT 1 FROM demand_events e JOIN fulfillment_order_lines l ON l.id=e.source_line_id WHERE l.fulfillment_order_id=?', (order_id,)).fetchone():
+            raise HTTPException(409, 'Orders with recorded demand cannot be deleted; demand history must be preserved')
         cursor = connection.execute("DELETE FROM fulfillment_orders WHERE id = ?", (order_id,))
         if cursor.rowcount == 0:
             raise HTTPException(404, "Order not found")

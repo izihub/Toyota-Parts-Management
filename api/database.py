@@ -51,7 +51,8 @@ def init_database() -> None:
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as connection:
         # CREATE TABLE IF NOT EXISTS also migrates older databases by adding the
-        # synthetic generation/entry registry, without relabeling existing stock.
+        # synthetic registries and demand history/coverage, without generating
+        # historical demand or assuming that previously unobserved periods are zero.
         connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         for table, additions in {
             "claims": {"model_version": "TEXT", "reviewed_at": "TEXT",

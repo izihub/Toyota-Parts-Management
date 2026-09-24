@@ -1,4 +1,5 @@
 """Explicit SKU fitment and reviewed-claim conversion; no inferred compatibility."""
+from .demand_service import record_requested_demand
 import hashlib
 import json
 import sqlite3
@@ -148,7 +149,8 @@ def convert_claim(accident_id: str, request: ConversionRequest):
         items = [require_catalog(connection, line.sku, line.part_name, claim["model"], claim["make_year"]) for line in request.lines]
         order_id = connection.execute("INSERT INTO fulfillment_orders(workshop_id) VALUES (?)", (workshop["id"],)).lastrowid
         for line, item in zip(request.lines, items):
-            connection.execute("""INSERT INTO fulfillment_order_lines(fulfillment_order_id, part_name, vehicle_model, make_year, quantity, unit_price, catalog_item_id, claim_prediction_id)
+            line_cursor = connection.execute("""INSERT INTO fulfillment_order_lines(fulfillment_order_id, part_name, vehicle_model, make_year, quantity, unit_price, catalog_item_id, claim_prediction_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (order_id, line.part_name, claim["model"], claim["make_year"], line.quantity, line.unit_price, item["id"], accepted[line.part_name]["id"]))
+            record_requested_demand(connection, line_cursor.lastrowid, claim_source=claim['source_type'])
         connection.execute("INSERT INTO claim_conversions(claim_id, fulfillment_order_id, request_hash) VALUES (?, ?, ?)", (claim["id"], order_id, fingerprint))
         return {"id": f"fulfill-{order_id}", "accident_id": accident_id, "replayed": False}
